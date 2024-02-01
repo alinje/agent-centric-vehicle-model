@@ -62,9 +62,8 @@ env_safe=set() # specifies the assumption about the evolution of the environment
 
 # s -position, p - which direction on the road one is heading, 
 sys_vars = {"l", "r"}
-sys_init = {'start', 'sys_actions = "plus"', 'r'} # traveling east
-sys_safe = {'((end -> (X end)))', # (<>end)
-            '(r -> (sys_actions = "plus"))'} # || sys_actions = "halt  # specifies safety requirement
+sys_init = {'start'} # this could be either starting point
+sys_safe = {'((end -> (X end)))'} # specifies safety requirement
 sys_prog = {'end'}
 
 
@@ -76,7 +75,7 @@ specs.moore = True
 specs.qinit = r'\E \A'
 
 # synthesis
-ctrl = synthesize(specs, sys=sys_sws)
+ctrl = synthesize(specs, sys=sys_sws) # NOTE undeterministically creates a machine for travel either west or east 
 assert ctrl is not None, 'specification is unrealizable'
 
 if not ctrl.save('basicStraight'):
@@ -85,3 +84,5 @@ if not ctrl.save('basicStraight'):
 # TODO format output files
 # work on specification
 # transition model prob ok
+# brum
+# functional decomposition
