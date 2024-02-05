@@ -42,6 +42,23 @@ def straightRoad(roadLength):
             sys_sws.transitions.add('s'+str(i),'s'+str(i), sys_actions='halt')
     return sys_sws
 
+# attempt to imitate
+def rhc():
+    ts = basicStraight(5)
+
+    #environment assumption φe encapsulates the following statements which are assumed to hold in any execution: 
+    #(A1) obstacles may not block a road; 
+    #(A2) an obstacle is detected before the vehicle gets too close to it, i.e., an obstacle may not instantly pop up right in front of the vehicle; 
+    #(A3) sensing range is limited, i.e., the vehicle cannot detect an obstacle that is away from it farther than certain distance.
+    #(A4) to make sure that the stay-in-lane property is achievable, we assume that an obstacle does not disappear while the vehicle is in its vicinity; 
+    #(A5) obstacles may not span more than a certain number of consecutive cells in the middle of the road; 
+    #(A6) each of the intersections is clear infinitely often; and 
+    #(A7) each of the cells marked by star and its adjacent cells are not occupied by an obstacle infinitely often.
+    
+    env_safe = {}
+    
+    # TODO the vehicle starts from an obstacle-free cell on R1 with at least one obstacle-free cell adjacent to it
+    sys_init = {} 
 
 def basicStraight():
     sys_sws = straightRoad(5)
