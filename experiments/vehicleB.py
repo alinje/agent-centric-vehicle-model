@@ -24,18 +24,32 @@ def agentCentricStraightFTS():
     
     # i guess an action should just change all
 
-def agentCentricSpec():
-    # fed path information from something that has calculated surroundings for every position
-    # ofc that needs to be done live
+def navigationTop():
+    roadNet = {}
+    path = {} # subset of roadnet
+
+    pathInfo = {}
+
+    for pos in roadNet:
+        surroundings = {}
+        surroundingsPath = {} # path U surroundings
+        pathInfo |= {pos: surroundingsPath}
+
+
+    currentPos = {}
+    while true:
+        currentPos = agentCentricSpec(pathInfo[currentPos])
+
+
+def agentCentricSpec(pathSurroundings):
+    # fed path information from something that has calculated path surroundings for every possible location
     # so a top system has positions and overall knowledge
     # hands it down to specification for sensor-area size which calculates move.
     # this only calculates one move? then hands back up
 
-
-    target = {}
-    # we can't sense road length etc, we might be given some expectations
-    # as init step we should probably be given road width?
-    roadExpectations = {}
+    # what can be given
+    # path forward, left, forward left, etc.
+    # 'pf', 'pl', 'pfl', 'pr', 'pfr',
 
 
 
@@ -45,16 +59,17 @@ def agentCentricSpec():
     #   variables describe surroundings
 
     env_vars={
-        # path forward, left, forward left, etc.
-        'pf', 'pl', 'pfl', 'pr', 'pfr', 
     }
     sys_vars={}
     env_init={}
-    sys_init={}
+    sys_init={
+        }
     env_safe={}
 
     # stay in lane if possible
-    sys_safe={}
+    sys_safe={
+        
+    }
     env_prog={}
 
 

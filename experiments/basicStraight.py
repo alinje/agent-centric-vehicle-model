@@ -7,6 +7,7 @@ from scipy import sparse
 roadLength = 5
 stateAmount = roadLength*3
 
+# transition model of a straight road with no obstacles
 def straightRoad(roadLength):
     sys_sws = FTS()
     sys_sws.atomic_propositions.add_from(['start','end'])
@@ -42,6 +43,67 @@ def straightRoad(roadLength):
             sys_sws.transitions.add('s'+str(i),'s'+str(i), sys_actions='halt')
     return sys_sws
 
+# trajectory planner
+def shortHorizon(horizonLength, roadLength, roadWidth):
+    # W here is a promise of continoued forward progression
+    shProb = []
+
+    w = []
+    for i in range(0, roadLength):
+        env_vars={'obs': range(0,roadLength)}
+
+        # is in a target state
+        for ts in range(i*roadWidth, i*roadWidth +3):
+            w.append('s' + str(ts))
+
+        # invariant Phi
+            
+
+        sys_vars = {}
+
+        
+
+        shs = GRSpec(env_vars, sys_vars, env_init, sys_init,
+                     env_safe, sys_safe, env_prog, sys_prog)
+        w.append(shs)
+
+    # set F(W)
+    for i in range(0, roadLength):
+        w[i].setFW(w[min([roadLength-1, i+horizonLength-1])]) # function does not exist
+    return w
+        
+
+# goal generator
+def longHorizon(roadLength, roadWidth):
+
+
+    dynamics = straightRoad(roadLength)
+
+    env_vars={'obs': range(0,roadLength)} # one obstacle at a time
+    sys_vars={}
+    env_init={}
+
+    sys_init={}
+    env_safe={}
+
+    # obstacle not in starting pos
+    stms = []
+    for vpos in range(0, roadLength*roadWidth):
+        #for opos in range(max([0,vpos-1]), min([roadLength, vpos+2])):
+        stms.append('(( s{0} ) -> !(obs != {0} ))'.format(vpos))
+
+
+
+    sys_safe={}
+    env_prog={}
+
+    # eventually reach end
+    sys_prog={}
+
+    specs = GRSpec(env_vars, sys_vars, env_init, sys_init,
+                   env_safe, sys_safe, env_prog, sys_prog)
+    return specs
+
 # attempt to imitate
 def rhc():
     ts = basicStraight(5)
@@ -54,12 +116,18 @@ def rhc():
     #(A5) obstacles may not span more than a certain number of consecutive cells in the middle of the road; 
     #(A6) each of the intersections is clear infinitely often; and 
     #(A7) each of the cells marked by star and its adjacent cells are not occupied by an obstacle infinitely often.
-    
-    env_safe = {}
+    roadLength = 25
+    roadWidth = 3
+    specs = longHorizon(roadLength, roadLength)
+    shs = shortHorizon(5, roadLength, roadWidth)
+
+    planner = synthesize(specs)
+
     
     # TODO the vehicle starts from an obstacle-free cell on R1 with at least one obstacle-free cell adjacent to it
     sys_init = {} 
 
+# synthesis of a straight road with no obstacles
 def basicStraight():
     sys_sws = straightRoad(5)
 
@@ -74,7 +142,7 @@ def basicStraight():
     #env_vars={"o1", "o2", ..., "om"},
     env_vars=set()
     env_init=set()
-    env_prog=set() # QUE stuff that happens inf often?
+    env_prog=set()
     env_safe=set() # specifies the assumption about the evolution of the environment state
 
 
@@ -103,8 +171,10 @@ def basicStraight():
     if not ctrl.save('basicStraight'):
         print(ctrl)
 
-    # TODO format output files
+    # TODO
     # work on specification
     # transition model prob ok
     # brum
     # functional decomposition
+        
+basicStraight()
