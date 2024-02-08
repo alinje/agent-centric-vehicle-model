@@ -2,6 +2,8 @@ from tulip.spec import GRSpec
 from tulip.transys import FTS, prepend_with
 from tulip.synth import synthesize
 
+import locUtils as l
+
 def agentCentricStraightFTS():
     ts = FTS()
     ts.atomic_propositions.add_from(['agent', 'path', 'possPath']) # QUE !possPath enough to mark obstacle? might help w moving obstacles
@@ -37,13 +39,15 @@ def navigationTop():
 
 
     currentPos = {}
-    while true:
+    while True:
         currentPos = agentCentricSpec(pathInfo[currentPos])
 
 
 def agentCentricSpec(pathSurroundings):
+    # QUE will generic parts of specification be passed down?
     # fed path information from something that has calculated path surroundings for every possible location
-    # so a top system has positions and overall knowledge
+    # so a top system has positions and 'global' knowledge
+    # such as which lane leeds to the correct
     # hands it down to specification for sensor-area size which calculates move.
     # this only calculates one move? then hands back up
 
@@ -58,48 +62,95 @@ def agentCentricSpec(pathSurroundings):
     #   no variable representing agent pos
     #   variables describe surroundings
 
-    env_vars={
+    # NLVL obstacle value of moving eq speed, faster, slower, static or non-existing
+    # NLVL other environmental context as temparuture, grip etc
+    env_vars = l.obstacleLocations + l.targetLocations
+
+    # NLVL speed, 
+    sys_vars={ 
+        #'moving': 'boolean',
+    } 
+    
+    # TODO starting pos is not blocked
+    env_init={
+        # does not start in an obstacle
+        '! oa',
+
     }
-    sys_vars={}
-    env_init={}
+
+
+
     sys_init={
+        # TODO assuring that next state, the vehicle will have moved
+        # does speed need to be explicit then?
         }
-    env_safe={}
+    
+
+    
+    # TODO an obstacle will not appear in previously declared safe space
+    # no obstacles exist outside of sensor range - self made here
+    
+    env_safe={
+        # road is not blocked
+        '(! olf) || (! of) || (! orf)'
+    }
+    ############
+    # all obstacles move in unison and no obstacles randomly appear
+    # TODO road status, targets same treatment?
+
+    mF = []
+    for loc in l.forwardRemaining:
+        mF.append('(o{0} <-> X o{1})'.format(loc, l.forwardMove(loc)))
+        mF.append('(t{0} <-> X t{1})'.format(loc, l.forwardMove(loc)))
+
+    mLF = []
+    for loc in l.leftForwardRemaining:
+        mLF.append('(o{0} <-> X o{1})'.format(loc, l.leftForwardMove(loc)))
+        mLF.append('(t{0} <-> X t{1})'.format(loc, l.leftForwardMove(loc)))
+    
+    mRF = []
+    for loc in l.rightForwardRemaining:
+        mRF.append('(o{0} <-> X o{1})'.format(loc, l.rightForwardMove(loc)))
+        mRF.append('(t{0} <-> X t{1})'.format(loc, l.rightForwardMove(loc)))
+
+    env_safe = {
+        '<->'.join(mF),
+        '<->'.join(mLF),
+        '<->'.join(mRF),
+    }
+    
+    ############
 
     # stay in lane if possible
+    # navigation
     sys_safe={
+        # no collision
+        '! oa',
+
+        # no next state collision
         
     }
+
     env_prog={}
 
 
     # TODO declared here: everything will shuffle?
-    sys_prog={}
+    sys_prog={
+        # eventually the agent will be in a target
+        'ta'
+    }
 
     specs = GRSpec(env_vars, sys_vars, env_init, sys_init,
                 env_safe, sys_safe, env_prog, sys_prog)
+    
+    return specs
 
-def obstacleAgentCentricSpec():
-    # TODO starting pos is not blocked
+specs = agentCentricSpec('')
+specs.moore = True
+specs.qinit = r'\E \A'
+ctrl = synthesize(specs)
+assert ctrl is not None, 'specification is unrealizable'
 
-    env_init = {}
-
-    # TODO an obstacle will not appear in previously declared safe space
-    # no obstacles exist outside of sensor range - self made here
-    # road is not blocked
-    # obstacle does not disappear
-    env_safe = {}
-
-    # TODO assuring that next state, the vehicle will have moved
-    # does not start in an obstacle
-    sys_init = {}
-
-    # TODO no collision
-    # stay in lane if possible
-    # navigation
-    sys_safe = {}
-
-    # being overtaken
-    sys_safe |= {}
-    # obstacle: overtake 
+if not ctrl.save('agentCentric'):
+    print(ctrl)
 
