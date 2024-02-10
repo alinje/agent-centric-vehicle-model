@@ -71,10 +71,7 @@ def agentCentricSpec(pathSurroundings):
         #'moving': 'boolean',
     } 
     
-    # TODO starting pos is not blocked
     env_init={
-        # does not start in an obstacle
-        '! oa',
 
     }
 
@@ -82,7 +79,16 @@ def agentCentricSpec(pathSurroundings):
 
     sys_init={
         # TODO assuring that next state, the vehicle will have moved
-        # does speed need to be explicit then?
+        # QUE does speed need to be explicit then?
+        
+        # obstacle in the other lane of the starting cut
+        # QUE why
+        'oll',
+
+        # does not start in an obstacle
+        '! oa',
+        # nor with no way to go
+        '(! olf) || (! of) || (! orf)',
         }
     
 
@@ -92,12 +98,15 @@ def agentCentricSpec(pathSurroundings):
     
     env_safe={
         # road is not blocked
-        '(! olf) || (! of) || (! orf)'
+        '(! olf) || (! of) || (! orf)',
+        #'X ((! olf) || (! of) || (! orf))'
     }
     ############
     # all obstacles move in unison and no obstacles randomly appear
+    ############
     # TODO road status, targets same treatment?
 
+    # obstacles moving in unison
     mF = []
     for loc in l.forwardRemaining:
         mF.append('(o{0} <-> X o{1})'.format(loc, l.forwardMove(loc)))
@@ -113,11 +122,41 @@ def agentCentricSpec(pathSurroundings):
         mRF.append('(o{0} <-> X o{1})'.format(loc, l.rightForwardMove(loc)))
         mRF.append('(t{0} <-> X t{1})'.format(loc, l.rightForwardMove(loc)))
 
-    env_safe = {
-        '<->'.join(mF),
-        '<->'.join(mLF),
-        '<->'.join(mRF),
+    # if things have appeared in the leftmost or rightmost places
+    # we know there has been a left or right shift respectively
+    # QUE very controlled env vars for this? does it matter for computing?
+    confirmedLeftForward = ' && '.join(mLF)
+    for loc in l.uniqueLeftForwardAppearing:
+        env_safe |= {'X o{0} -> ({1})'.format(loc, confirmedLeftForward)}
+    
+    confirmedRightForward = ' && '.join(mRF)
+    for loc in l.uniqueRightForwardAppearing:
+        env_safe |= {'X o{0} -> ({1})'.format(loc, confirmedRightForward)}
+
+    confirmedForward = ' && '.join(mF)
+    # things should not appear with no trace in any place but the outermost sensor places
+    # for loc in l.alreadySensedSpace:
+    #     env_safe |= {
+    #         '(X o{0}) -> (({0}) || ({1}) || ({2}))'
+    #             .format(loc, confirmedLeftForward, confirmedForward, confirmedRightForward)
+    #         # '(X o{0}) -> (o{1} || o{2} || o{3})'
+    #         #     .format(loc, l.leftForwardMove(loc), l.forwardMove(loc), l.rightForwardMove(loc))
+    #     }
+
+
+    env_safe |= { # QUE and between and or here?
+        # '<->'.join(mF),
+        # '<->'.join(mLF),
+        # '<->'.join(mRF),
+        '({0}) || ({1}) || ({2})'.format(
+            ' && '.join(mF),
+            ' && '.join(mLF),
+            ' && '.join(mRF)) # QUE this is kinda also progression
     }
+
+
+    # NOTE cannot ensure progression by moving obstacles
+    # because there might not be any obstacles
     
     ############
 
@@ -126,12 +165,26 @@ def agentCentricSpec(pathSurroundings):
     sys_safe={
         # no collision
         '! oa',
-
         # no next state collision
+        'X (! oa)',
         
+
+
+        # road is not blocked
+        '(! olf) || (! of) || (! orf)',
+
+        # TODO only one move / no appearign
+
+        # NLVL 
+
     }
 
-    env_prog={}
+    env_prog={
+        # NLVL eventually a target will appear in a reachable state
+        # eventually a target will appear in the end of the sensor range
+        'tllff || tlff || tff || trff || trrff'
+
+    }
 
 
     # TODO declared here: everything will shuffle?

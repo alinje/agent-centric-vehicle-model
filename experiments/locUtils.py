@@ -49,7 +49,7 @@ def rightForwardMove(loc):
         return forwardMoveNoAgent(loc)[1:]
     return 'l' + forwardMoveNoAgent(loc)
 
-# TODO rotations
+# NLVL rotations
 
 forwardRemaining = [loc for loc in locations if 'bb' not in loc]
 
@@ -59,6 +59,15 @@ rightForwardRemaining = [loc for loc in forwardRemaining if 'll' not in loc]
 
 forwardAppearing = [loc for loc in locations if 'ff' in loc]
 
+leftForwardAppearing = [loc for loc in locations if ('ll' in loc or 'ff' in loc)]
+
+rightForwardAppearing = [loc for loc in locations if ('rr' in loc or 'ff' in loc)]
+
+uniqueLeftForwardAppearing = [loc for loc in leftForwardAppearing if 'll' in loc]
+
+uniqueRightForwardAppearing = [loc for loc in rightForwardAppearing if 'rr' in loc]
+
+alreadySensedSpace = [loc for loc in locations if ('ll' not in loc and 'ff' not in loc and 'rr' not in loc)]
 
 ############# tests ##############
 
