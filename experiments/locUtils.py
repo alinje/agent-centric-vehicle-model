@@ -15,7 +15,7 @@ obstacleLocations = ['o' + loc for loc in locations]
 pathLocations     = ['p' + loc for loc in locations] # don't know yet if we refer to passed path as path
 altPathLocations  = ['a' + loc for loc in locations] # some locations will get one off path. others are alt paths
 roadLocations     = ['r' + loc for loc in locations]
-targetLocations   = ['t' + loc for loc in locations]
+targetLocations   = ['t' + loc for loc in locations if 'b' not in loc]
 
 nonAgentLocations = [loc for loc in locations if loc != 'a']
 
