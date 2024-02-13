@@ -69,7 +69,9 @@ def agentCentricSpec(pathSurroundings):
 
     for loc in l.targetLocations:
         env_vars[loc] = 'boolean'
-        
+
+    for loc in l.obstacleLocations:
+        env_vars[loc] = 'boolean'
 
     # NLVL speed, 
     sys_vars={ 
@@ -77,11 +79,11 @@ def agentCentricSpec(pathSurroundings):
     } 
     
     env_init={
-        #'oll',
+        'oll',
         # does not start in an obstacle
-        #'! oa',
+        '! oa',
         # nor with no way to go
-        #'!(olf && of && orf)',
+        '!(olf && of && orf)',
 
         # we don't start in a target, rendering the controller useless
         '! ta'
@@ -119,19 +121,26 @@ def agentCentricSpec(pathSurroundings):
 
     # obstacles moving in unison
     mF = []
-    for loc in [loc for loc in l.forwardRemaining if 'f' in loc]:
-        #mF.append('(o{0} <-> X o{1})'.format(loc, l.forwardMove(loc)))
-        mF.append('(t{0} -> (X t{1}))'.format(loc, l.forwardMove(loc)))
+    for loc in l.forwardRemaining:
+        mF.append('(o{0} <-> X o{1})'.format(loc, l.forwardMove(loc)))
 
     mLF = []
-    for loc in [loc for loc in l.leftForwardRemaining if 'f' in loc]:
-        #mLF.append('(o{0} <-> X o{1})'.format(loc, l.leftForwardMove(loc)))
-        mLF.append('(t{0} -> (X t{1}))'.format(loc, l.leftForwardMove(loc)))
+    for loc in l.leftForwardRemaining:
+        mLF.append('(o{0} <-> X o{1})'.format(loc, l.leftForwardMove(loc)))
     
     mRF = []
+    for loc in l.rightForwardRemaining:
+        mRF.append('(o{0} <-> X o{1})'.format(loc, l.rightForwardMove(loc)))
+
+    # targets moving in unison
+    for loc in [loc for loc in l.forwardRemaining if 'f' in loc]:
+        mF.append('(t{0} <-> (X t{1}))'.format(loc, l.forwardMove(loc)))
+
+    for loc in [loc for loc in l.leftForwardRemaining if 'f' in loc]:
+        mLF.append('(t{0} <-> (X t{1}))'.format(loc, l.leftForwardMove(loc)))
+    
     for loc in [loc for loc in l.rightForwardRemaining if 'f' in loc]:
-        #mRF.append('(o{0} <-> X o{1})'.format(loc, l.rightForwardMove(loc)))
-        mRF.append('(t{0} -> (X t{1}))'.format(loc, l.rightForwardMove(loc)))
+        mRF.append('(t{0} <-> (X t{1}))'.format(loc, l.rightForwardMove(loc)))
 
     # if things have appeared in the leftmost or rightmost places
     # we know there has been a left or right shift respectively
@@ -156,14 +165,15 @@ def agentCentricSpec(pathSurroundings):
     #     }
 
 
-    env_safe = { # QUE and between and or here?
-        # '<->'.join(mF),
-        # '<->'.join(mLF),
-        # '<->'.join(mRF),
+    env_safe = {
         '(moving -> ({0}) || ({1}) || ({2}))'.format(
             ' && '.join(mF),
             ' && '.join(mLF),
             ' && '.join(mRF)), # QUE this is kinda also progression
+
+        # NLVL remove
+        # no barriers blocking the entire cut
+        '! (ollff && olff && off && orff && orrff)',
         # once a target appears, it never disappears again
         # NLVL there might be a barrier?
         #'({0}) -> (X ({0}))'.format(' || '.join(l.targetLocations)),
@@ -189,14 +199,22 @@ def agentCentricSpec(pathSurroundings):
     # navigation
     sys_safe={
         # no collision
-        # '! oa',
+        #'! oa',
+        # no obstacle front of car 
+        '! of',
         # no next state collision
-        # 'X (! oa)',
-        
-        'moving'
+        '(olf || of || orf) -> (X (! oa))', # QUE why this formulation?
+
+        # only move left if nec
+        '(off && orf) -> {0}'.format(' && '.join(mLF)),
+
+        # move right if pos
+        #'()'
+
+        #'moving',
 
         # road is not blocked
-        # '(! olf) || (! of) || (! orf)',
+        #'!(olf && of && orf)',
 
         # TODO only one move / no appearign
 
