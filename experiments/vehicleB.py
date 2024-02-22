@@ -75,7 +75,6 @@ def agentCentricSpec(pathSurroundings):
 
     # NLVL speed, 
     sys_vars={ 
-        #'moving': 'boolean',
         'mlf': 'boolean', 
         'mf': 'boolean',
         'mrf': 'boolean',
@@ -95,18 +94,16 @@ def agentCentricSpec(pathSurroundings):
         # '! ta'
     }
 
+    for loc in l.locations:
+        if loc != 'll':
+            env_init |= {'! o'+loc}
+
 
     sys_init={
         # TODO assuring that next state, the vehicle will have moved
         # QUE does speed need to be explicit then?
         
-        # obstacle in the other lane of the starting cut
-        # QUE why
 
-        # does not start in an obstacle
-        #'! oa',
-        # nor with no way to go
-        #'(! of) && ((! off) || )  ((! olf) || (! of) || (! orf))',
         }
     
 
@@ -147,31 +144,9 @@ def agentCentricSpec(pathSurroundings):
     # for loc in [loc for loc in l.rightForwardRemaining if 'f' in loc]:
     #     mRF.append('(t{0} <-> (X t{1}))'.format(loc, l.rightForwardMove(loc)))
 
-    # if things have appeared in the leftmost or rightmost places
-    # we know there has been a left or right shift respectively
-    # QUE very controlled env vars for this? does it matter for computing?
-    # BUG can also have slided in from inner court
-    # confirmedLeftForward = ' && '.join(mLF)
-    # for loc in l.uniqueLeftForwardAppearing:
-    #     env_safe |= {'X o{0} -> (({1}) || )'.format(loc, confirmedLeftForward)}
-    
-    # confirmedRightForward = ' && '.join(mRF)
-    # for loc in l.uniqueRightForwardAppearing:
-    #     env_safe |= {'X o{0} -> ({1})'.format(loc, confirmedRightForward)}
-
-    # confirmedForward = ' && '.join(mF)
-    # things should not appear with no trace in any place but the outermost sensor places
-    # for loc in l.alreadySensedSpace:
-    #     env_safe |= {
-    #         '(X o{0}) -> (({0}) || ({1}) || ({2}))'
-    #             .format(loc, confirmedLeftForward, confirmedForward, confirmedRightForward)
-    #         # '(X o{0}) -> (o{1} || o{2} || o{3})'
-    #         #     .format(loc, l.leftForwardMove(loc), l.forwardMove(loc), l.rightForwardMove(loc))
-    #     }
 
 
     env_safe = {
-        #'({0}) || ({1}) || ({2})'.format(" && ".join(mLF), " && ".join(mF), " && ".join(mRF)),
 
         'mlf <-> ({0})'.format(" && ".join(mLF)),
         'mf <-> ({0})'.format(" && ".join(mF)),
@@ -180,7 +155,6 @@ def agentCentricSpec(pathSurroundings):
 
         # NLVL remove
         # no barriers blocking the entire cut
-        #'! (ollff && olff && off && orff && orrff)',
         # there is always a path
         # NOTE this is very hard coded
         '(olf && orf) -> ! off',
@@ -203,13 +177,6 @@ def agentCentricSpec(pathSurroundings):
         #'!({0})'.format(' && '.join(['o' + loc for loc in l.forwardAppearing]))
     }
 
-    # what the car identifies as a mass is an object for the environment
-    # for loc in l.locations:
-    #     env_safe |= {
-    #         'm{0} -> o{0}'.format(loc)
-
-    #     }
-
 
     # NOTE cannot ensure progression by moving obstacles
     # because there might not be any obstacles
@@ -220,20 +187,12 @@ def agentCentricSpec(pathSurroundings):
     # navigation
     sys_safe={
         # vehicle is always moving
-        #'mlf || mf || mrf',
         # but only in one way
         '(mlf && (! mf) && (! mrf)) || ((! mlf) && mf && (! mrf)) || ((! mlf) && (! mf) && mrf)',
 
-        # '(({0}) || ({1}) || ({2}))'.format(
-        #     ' && '.join(mF),
-        #     ' && '.join(mLF),
-        #     ' && '.join(mRF)), # QUE this is kinda also progression
         # no collision
         '! oa',
-        # no obstacle front of car 
-        #'! of',
-        # no next state collision
-        #'X (! oa)',
+        # no moving into dead ends
         l.pathExists,
 
         #'(olf || orf) -> (X (! oa))', # QUE why this formulation? because of GR(1)?
@@ -252,6 +211,7 @@ def agentCentricSpec(pathSurroundings):
         # eventually a target will appear in the end of the sensor range
         # 'tllff || tlff || tff || trff || trrff'
         # 'tllff && tlff && tff && trff && trrff'
+        'off',
 
     }
 
@@ -274,13 +234,13 @@ specs.plus_one = False
 
 print(specs)
 
-ctrl = synthesize(specs)
+ctrl = synthesize(specs, solver='omega')
 assert ctrl is not None, 'specification is unrealizable'
 print('realized')
 
 
 
-if not ctrl.save(filename='agentCentric', fileformat='svg'):
+if not ctrl.save(filename='agentCentric.svg'):
    print(ctrl)
 
 # print(ctrl)
