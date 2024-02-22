@@ -69,6 +69,10 @@ uniqueRightForwardAppearing = [loc for loc in rightForwardAppearing if 'rr' in l
 
 alreadySensedSpace = [loc for loc in locations if ('ll' not in loc and 'ff' not in loc and 'rr' not in loc)]
 
+##################################
+pathExists = '(! of) && ((! off) || ((! olf) && (! olff)) || ((! orf) && (! orff)))'
+
+
 ############# tests ##############
 
 def test():

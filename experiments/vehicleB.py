@@ -90,7 +90,6 @@ def agentCentricSpec(pathSurroundings):
         '! oa',
         # nor with no way to go
         l.pathExists,
-        #'(! of) && ((! off) || )  ((! olf) || (! of) || (! orf))',
 
         # we don't start in a target, rendering the controller useless
         # '! ta'
@@ -128,15 +127,15 @@ def agentCentricSpec(pathSurroundings):
     # obstacles moving in unison
     mF = []
     for loc in l.forwardRemaining:
-        mF.append('(o{0} <-> X o{1})'.format(loc, l.forwardMove(loc)))
+        mF.append('(o{0} <-> (X o{1}))'.format(loc, l.forwardMove(loc)))
 
     mLF = []
     for loc in l.leftForwardRemaining:
-        mLF.append('(o{0} <-> X o{1})'.format(loc, l.leftForwardMove(loc)))
+        mLF.append('(o{0} <-> (X o{1}))'.format(loc, l.leftForwardMove(loc)))
     
     mRF = []
     for loc in l.rightForwardRemaining:
-        mRF.append('(o{0} <-> X o{1})'.format(loc, l.rightForwardMove(loc)))
+        mRF.append('(o{0} <-> (X o{1}))'.format(loc, l.rightForwardMove(loc)))
 
     # targets moving in unison
     # for loc in [loc for loc in l.forwardRemaining if 'f' in loc]:
@@ -172,10 +171,11 @@ def agentCentricSpec(pathSurroundings):
 
 
     env_safe = {
+        #'({0}) || ({1}) || ({2})'.format(" && ".join(mLF), " && ".join(mF), " && ".join(mRF)),
 
-        'mlf -> {0}'.format(" && ".join(mLF)),
-        'mf -> {0}'.format(" && ".join(mF)),
-        'mrf -> {0}'.format(" && ".join(mRF)),
+        'mlf <-> ({0})'.format(" && ".join(mLF)),
+        'mf <-> ({0})'.format(" && ".join(mF)),
+        'mrf <-> ({0})'.format(" && ".join(mRF)),
 
 
         # NLVL remove
@@ -231,18 +231,19 @@ def agentCentricSpec(pathSurroundings):
         # no collision
         '! oa',
         # no obstacle front of car 
-        '! of',
+        #'! of',
         # no next state collision
-        'X (! oa)',
+        #'X (! oa)',
         l.pathExists,
 
-        #'(olf || orf) -> (X (! oa))', # QUE why this formulation?
+        #'(olf || orf) -> (X (! oa))', # QUE why this formulation? because of GR(1)?
 
+        # NOTE probably bad form
         # only move left if nec
         '((orf || orff) && (! off)) -> mf',
 
         # move right if pos
-        '(! (off || orf || orff)) -> mrf',
+        '(! (orf || orff)) -> mrf',
 
     }
 
@@ -255,7 +256,6 @@ def agentCentricSpec(pathSurroundings):
     }
 
 
-    # TODO declared here: everything will shuffle?
     sys_prog={
         # eventually the agent will be in a target
         # 'ta'
@@ -268,8 +268,10 @@ def agentCentricSpec(pathSurroundings):
     return specs
 
 specs = agentCentricSpec('')
-specs.moore = True
-specs.qinit = r'\E \A'
+specs.moore = False
+specs.qinit = r'\A \E'
+specs.plus_one = False
+
 print(specs)
 
 ctrl = synthesize(specs)
