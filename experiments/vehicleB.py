@@ -70,8 +70,8 @@ def agentCentricSpec(pathSurroundings):
     # for loc in l.targetLocations:
     #     env_vars[loc] = 'boolean'
 
-    for loc in l.obstacleLocations:
-        env_vars[loc] = 'boolean'
+    for loc in l.slimLocations:
+        env_vars['o' + loc] = 'boolean'
 
     # NLVL speed, 
     sys_vars={ 
@@ -84,7 +84,7 @@ def agentCentricSpec(pathSurroundings):
 
 
     env_init={
-        'oll',
+        #'oll',
         # does not start in an obstacle
         '! oa',
         # nor with no way to go
@@ -94,9 +94,9 @@ def agentCentricSpec(pathSurroundings):
         # '! ta'
     }
 
-    for loc in l.locations:
-        if loc != 'll':
-            env_init |= {'! o'+loc}
+    # for loc in l.locations:
+    #     if loc != 'll':
+    #         env_init |= {'! o'+loc}
 
 
     sys_init={
@@ -123,15 +123,15 @@ def agentCentricSpec(pathSurroundings):
 
     # obstacles moving in unison
     mF = []
-    for loc in l.forwardRemaining:
+    for loc in l.slimForwardRemaining:
         mF.append('(o{0} <-> (X o{1}))'.format(loc, l.forwardMove(loc)))
 
     mLF = []
-    for loc in l.leftForwardRemaining:
+    for loc in l.slimLeftForwardRemaining:
         mLF.append('(o{0} <-> (X o{1}))'.format(loc, l.leftForwardMove(loc)))
     
     mRF = []
-    for loc in l.rightForwardRemaining:
+    for loc in l.slimRightForwardRemaining:
         mRF.append('(o{0} <-> (X o{1}))'.format(loc, l.rightForwardMove(loc)))
 
     # targets moving in unison

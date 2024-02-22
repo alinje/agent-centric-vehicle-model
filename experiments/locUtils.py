@@ -10,11 +10,20 @@ locations = {'a',
              'b', 'bb',
              'lb', 'llb', 'lbb', 'llbb'}
 
+slimLocations = {'a', 
+                 'l', 
+                 'lf', 'lff', 'llff',
+                 'f', 'ff',
+                 'rf', 'rff', 'rrff',
+                 'r'}
+
 
 obstacleLocations = ['o' + loc for loc in locations]
 pathLocations     = ['p' + loc for loc in locations] # don't know yet if we refer to passed path as path
 altPathLocations  = ['a' + loc for loc in locations] # some locations will get one off path. others are alt paths
 roadLocations     = ['r' + loc for loc in locations]
+
+# maybe targets can be in only one cut
 targetLocations   = ['t' + loc for loc in locations if 'b' not in loc]
 
 nonAgentLocations = [loc for loc in locations if loc != 'a']
@@ -56,6 +65,12 @@ forwardRemaining = [loc for loc in locations if 'bb' not in loc]
 leftForwardRemaining = [loc for loc in forwardRemaining if 'rr' not in loc]
 
 rightForwardRemaining = [loc for loc in forwardRemaining if 'll' not in loc]
+
+slimForwardRemaining = ['ff', 'lff', 'rff', 'lf', 'f', 'rf']
+
+slimLeftForwardRemaining = [loc for loc in slimForwardRemaining if 'r' not in loc]
+
+slimRightForwardRemaining = [loc for loc in slimForwardRemaining if 'l' not in loc]
 
 forwardAppearing = [loc for loc in locations if 'ff' in loc]
 
