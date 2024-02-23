@@ -5,27 +5,6 @@ from tulip.transys import machines
 
 import locUtils as l
 
-def agentCentricStraightFTS():
-    ts = FTS()
-    ts.atomic_propositions.add_from(['agent', 'path', 'possPath']) # QUE !possPath enough to mark obstacle? might help w moving obstacles
-    # TODO navigation aim another prop?
-
-    # NOTE zoning might not have to be fixed size tiles, can be domain dependent?
-    ts.states.add_from({'a', 
-                        'l', 'll',
-                        'lf', 'llf', 'lff', 'llff',
-                        'f', 'ff',
-                        'rf', 'rrf', 'rff', 'rrff',
-                        'r', 'rr',
-                        'rb', 'rrb', 'rbb', 'rrbb',
-                        'b', 'bb',
-                        'lb', 'llb', 'lbb', 'llbb'})
-    
-    ts.transitions.add('a', 'f', 'forward') # NOTE wait no this is dumb?
-    # QUE what are the states here?
-    # like what properties that are true in that position
-    
-    # i guess an action should just change all
 
 def navigationTop():
     roadNet = {}
@@ -52,10 +31,6 @@ def agentCentricSpec(pathSurroundings):
     # hands it down to specification for sensor-area size which calculates move.
     # this only calculates one move? then hands back up
 
-    # what can be given
-    # path forward, left, forward left, etc.
-    # 'pf', 'pl', 'pfl', 'pr', 'pfr',
-
 
 
 
@@ -67,8 +42,8 @@ def agentCentricSpec(pathSurroundings):
     # NLVL other environmental context as temparuture, grip etc
     env_vars = {}
 
-    # for loc in l.targetLocations:
-    #     env_vars[loc] = 'boolean'
+    for loc in l.targetLocations:
+        env_vars[loc] = 'boolean'
 
     for loc in l.slimLocations:
         env_vars['o' + loc] = 'boolean'
@@ -84,14 +59,10 @@ def agentCentricSpec(pathSurroundings):
 
 
     env_init={
-        #'oll',
         # does not start in an obstacle
         '! oa',
         # nor with no way to go
         l.pathExists,
-
-        # we don't start in a target, rendering the controller useless
-        # '! ta'
     }
 
     # for loc in l.locations:
@@ -111,11 +82,7 @@ def agentCentricSpec(pathSurroundings):
     # TODO an obstacle will not appear in previously declared safe space
     # no obstacles exist outside of sensor range - self made here
     
-    # env_safe={
-    #     # road is not blocked
-    #     '(! olf) || (! of) || (! orf)',
-    #     #'X ((! olf) || (! of) || (! orf))'
-    # }
+
     ############
     # all obstacles move in unison and no obstacles randomly appear
     ############
@@ -135,13 +102,13 @@ def agentCentricSpec(pathSurroundings):
         mRF.append('(o{0} <-> (X o{1}))'.format(loc, l.rightForwardMove(loc)))
 
     # targets moving in unison
-    # for loc in [loc for loc in l.forwardRemaining if 'f' in loc]:
+    # for loc in [loc for loc in l.slimForwardRemaining]:
     #     mF.append('(t{0} <-> (X t{1}))'.format(loc, l.forwardMove(loc)))
 
-    # for loc in [loc for loc in l.leftForwardRemaining if 'f' in loc]:
+    # for loc in [loc for loc in l.slimLeftForwardRemaining]:
     #     mLF.append('(t{0} <-> (X t{1}))'.format(loc, l.leftForwardMove(loc)))
     
-    # for loc in [loc for loc in l.rightForwardRemaining if 'f' in loc]:
+    # for loc in [loc for loc in l.slimRightForwardRemaining]:
     #     mRF.append('(t{0} <-> (X t{1}))'.format(loc, l.rightForwardMove(loc)))
 
 
@@ -153,7 +120,7 @@ def agentCentricSpec(pathSurroundings):
         'mrf <-> ({0})'.format(" && ".join(mRF)),
 
 
-        # NLVL remove
+        # NLVL car is not surrounded (except by moving vehicles (or not?))
         # no barriers blocking the entire cut
         # there is always a path
         # NOTE this is very hard coded
@@ -162,20 +129,17 @@ def agentCentricSpec(pathSurroundings):
         '((! olf) && orf) -> ((! off) || (! olff))',
 
 
-        # once a target appears, it never disappears again
-        # NLVL there might be a barrier?
-        #'({0}) -> (X ({0}))'.format(' || '.join(l.targetLocations)),
-        #'(tllff || tlff || tff || trff || trrff) <-> (X (tllf || tlf || tf || trf || trrf))',
-        #'(tllf || tlf || tf || trf || trrf) <-> (X (tll || tl || ta || tr || trr))',
-        # '(tllff && tlff && tff && trff && trrff) || ((! tllff) && (! tlff) && (! tff) && (! trff) && (! trrff))',
-        # '!(tllb || tlb || tb || trb || trrb || tllbb || tlbb || tbb || trbb || trrbb)'
-        # there will always be some progression, guaranteed by there always being an obstacle
-        #' || '.join(l.obstacleLocations),
+        # '(tllff || tlff || tff || trff || trrff) -> ! (tlf || tf || trf || ta)',
+        # '(tlf || tf || trf) -> ! (tllff || tlff || tff || trff || trrff || ta)',
+        # 'ta -> ! (tllff || tlff || tff || trff || trrff || ta || tlf || tf || trf)',
+        # 'tff'
 
-        # NLVL remove
-        # the road will never be fully blocked
-        #'!({0})'.format(' && '.join(['o' + loc for loc in l.forwardAppearing]))
     }
+
+    # target only in one cut, then transformed into obstacles
+    for loc in l.forwardAppearing:
+            env_safe |= {'((! t{0}) && ({1})) -> o{0}'
+                .format(loc, ' || '.join([locWo for locWo in l.targetLocations if locWo != loc]))}
 
 
     # NOTE cannot ensure progression by moving obstacles
@@ -209,16 +173,14 @@ def agentCentricSpec(pathSurroundings):
     env_prog={
         # NLVL eventually a target will appear in a reachable state
         # eventually a target will appear in the end of the sensor range
-        # 'tllff || tlff || tff || trff || trrff'
-        # 'tllff && tlff && tff && trff && trrff'
-        'off',
+        #'tllff || tlff || tff || trff || trrff',
 
     }
 
 
     sys_prog={
         # eventually the agent will be in a target
-        # 'ta'
+        #'ta',
         #'X (mf || mlf || mrf)'
     }
 
@@ -240,10 +202,10 @@ print('realized')
 
 
 
-if not ctrl.save(filename='agentCentric.svg'):
+if not ctrl.save(filename='agentCentric', format='svg'):
    print(ctrl)
 
 # print(ctrl)
-runs = machines.random_run(ctrl, N=10)
-print(runs)
+#runs = machines.random_run(ctrl, N=10)
+#print(runs)
 

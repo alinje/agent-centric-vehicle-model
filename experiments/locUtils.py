@@ -23,8 +23,7 @@ pathLocations     = ['p' + loc for loc in locations] # don't know yet if we refe
 altPathLocations  = ['a' + loc for loc in locations] # some locations will get one off path. others are alt paths
 roadLocations     = ['r' + loc for loc in locations]
 
-# maybe targets can be in only one cut
-targetLocations   = ['t' + loc for loc in locations if 'b' not in loc]
+
 
 nonAgentLocations = [loc for loc in locations if loc != 'a']
 
@@ -87,6 +86,11 @@ alreadySensedSpace = [loc for loc in locations if ('ll' not in loc and 'ff' not 
 ##################################
 pathExists = '(! of) && ((! off) || ((! olf) && (! olff)) || ((! orf) && (! orff)))'
 
+
+##################################
+
+# maybe targets can be in only one cut
+targetLocations   = ['t' + loc for loc in forwardAppearing]
 
 ############# tests ##############
 
