@@ -1,5 +1,5 @@
+import re
 
-# NLVL one should decide sensor range on case, e.g. '3l5f'
 locations = {'a', 
              'l', 'll',
              'lf', 'llf', 'lff', 'llff',
@@ -10,12 +10,12 @@ locations = {'a',
              'b', 'bb',
              'lb', 'llb', 'lbb', 'llbb'}
 
-slimLocations = {'a', 
-                 'l', 
-                 'lf', 'lff', 'llff',
-                 'f', 'ff',
-                 'rf', 'rff', 'rrff',
-                 'r'}
+slimLocations = {'p0l0', 
+                 'p_1l0', 
+                 'p_1l1', 'p_1l2', 'p_2l2',
+                 'p0l1', 'p0l2',
+                 'p1l1', 'p1l2', 'p2l2',
+                 'p1l0'}
 
 
 obstacleLocations = ['o' + loc for loc in locations]
@@ -28,34 +28,19 @@ roadLocations     = ['r' + loc for loc in locations]
 nonAgentLocations = [loc for loc in locations if loc != 'a']
 
 def forwardMove(loc):
-    if loc=='f':
-        return 'a'
-    if loc=='a':
-        return 'b'
-    if 'f' in loc:
-        return loc[:len(loc)-1]
-    return loc + 'b'
-
-def forwardMoveNoAgent(loc):
-    return forwardMove(loc).replace('a', '')
+    loc = loc.replace("_", "-")
+    parts = list(filter(None, re.split('[pl]', loc)))
+    return f'p{str(int(parts[0])).replace("-", "_")}l{str(int(parts[1])-1).replace("-", "_")}'
 
 def leftForwardMove(loc):
-    if loc=='lf':
-        return 'a'
-    if loc=='a':
-        return 'rb'
-    if 'l' in loc:
-        return forwardMoveNoAgent(loc)[1:]
-    return 'r' + forwardMoveNoAgent(loc)
+    loc = loc.replace("_", "-")
+    parts = list(filter(None, re.split('[pl]', loc)))
+    return f'p{str(int(parts[0])+1).replace("-", "_")}l{str(int(parts[1])-1).replace("-", "_")}'
 
 def rightForwardMove(loc):
-    if loc=='rf':
-        return 'a'
-    if loc=='a':
-        return 'lb'
-    if 'r' in loc:
-        return forwardMoveNoAgent(loc)[1:]
-    return 'l' + forwardMoveNoAgent(loc)
+    loc = loc.replace("_", "-")
+    parts = list(filter(None, re.split('[pl]', loc)))
+    return f'p{str(int(parts[0])-1).replace("-", "_")}l{str(int(parts[1])-1).replace("-", "_")}'
 
 # NLVL rotations
 
@@ -65,11 +50,11 @@ leftForwardRemaining = [loc for loc in forwardRemaining if 'rr' not in loc]
 
 rightForwardRemaining = [loc for loc in forwardRemaining if 'll' not in loc]
 
-slimForwardRemaining = ['ff', 'lff', 'rff', 'lf', 'f', 'rf']
+slimForwardRemaining = ['p0l2', 'p_1l2', 'p1l2', 'p_1l1', 'p0l1', 'p1l1']
 
-slimLeftForwardRemaining = [loc for loc in slimForwardRemaining if 'r' not in loc]
+slimLeftForwardRemaining = ['p0l2', 'p_1l2', 'p_1l1', 'p0l1', 'p_2l2']
 
-slimRightForwardRemaining = [loc for loc in slimForwardRemaining if 'l' not in loc]
+slimRightForwardRemaining = ['p0l2', 'p1l2', 'p1l1', 'p0l1', 'p2l2']
 
 forwardAppearing = [loc for loc in locations if 'ff' in loc]
 
@@ -84,7 +69,7 @@ uniqueRightForwardAppearing = [loc for loc in rightForwardAppearing if 'rr' in l
 alreadySensedSpace = [loc for loc in locations if ('ll' not in loc and 'ff' not in loc and 'rr' not in loc)]
 
 ##################################
-pathExists = '(! of) && ((! off) || ((! olf) && (! olff)) || ((! orf) && (! orff)))'
+pathExists = '(! op0l1) && ((! op0l2) || ((! op_1l1) && (!op_1l2)) || ((! op1l1) && (! op1l2)))'
 
 
 ##################################
@@ -95,13 +80,14 @@ targetLocations   = ['t' + loc for loc in forwardAppearing]
 ############# tests ##############
 
 def test():
+    pass
     # print(forwardRemaining)
     # print([forwardMove(loc) for loc in forwardRemaining])
 
-    print(leftForwardRemaining)
-    print([leftForwardMove(loc) for loc in leftForwardRemaining])
+    # print(leftForwardRemaining)
+    # print([leftForwardMove(loc) for loc in leftForwardRemaining])
 
-    print(leftForwardMove('f'))
+    # print(leftForwardMove('f'))
 
     # print(rightForwardRemaining)
     # print([rightForwardMove(loc) for loc in rightForwardRemaining])

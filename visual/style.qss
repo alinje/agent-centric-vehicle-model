@@ -1,0 +1,14 @@
+
+QWidget#toolBar {
+    background-color: #D3D0CB;
+    border-style: ridge;
+    border-width: 2px;
+    border-color: #393E41;
+}
+
+QLabel {
+    color: #393E41;
+}
+
+(op1l0 == True) and (op_2l2 == False) and (op_1l1 == False) and (op_1l0 == False) and (op0l2 == False) and (op1l2 == True) and (op1l1 == True) and (op0l1 == False) and (op_1l2 == False) and (op2l2 == False) and (op0l0 == False)
+(op1l0 == True) and (op_2l2 == False) and (op_1l1 == False) and (op_1l0 == False) and (op0l2 == True) and (op1l2 == True) and (op1l1 == True) and (op0l1 == False) and (op_1l2 == False) and (op2l2 == False) and (op0l0 == False)

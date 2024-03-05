@@ -2,26 +2,53 @@ from tulip.spec import GRSpec
 from tulip.transys import FTS, prepend_with
 from tulip.synth import synthesize
 from tulip.transys import machines
+from tulip.dumpsmach import write_python_case
 
 import locUtils as l
 
 
-def navigationTop():
-    roadNet = {}
-    path = {} # subset of roadnet
+def navigationTop(arena):
+    """
+    @type arena: str
+    @param arena: name of map file mapping according to rules:
+        - driveable road marked '-'
+        - blocked road marked 'X'
+        - vehicle start location marked 'S'
+        - vehicle target location marked 'T'
+    """
+    roadNet = {} # arena split in multiple smaller maps which internally has same driving rules
+    path = {} # subset of roadnet which vehicle passes through in the initial strategic plan
 
-    pathInfo = {}
+    pathInfo = {} # conditions to send 
 
     for pos in roadNet:
         surroundings = {}
         surroundingsPath = {} # path U surroundings
         pathInfo |= {pos: surroundingsPath}
 
+    targetPos = findTargetPos()
 
-    currentPos = {}
-    while True:
-        currentPos = agentCentricSpec(pathInfo[currentPos])
+    currentPos = initPos
+    currentTacticalPlan = initTacticalPlan
+    while currentPos != targetPos:
+        currentTacticalPlan = agentCentricSpec(pathInfo[currentPos]) # make new tactical planner
+        currentPos = runPlan(currentPos, currentTacticalPlan) # run new tactical planner until we are in partial target
 
+def runPlan(startPos, tacticalPlan, finalTarget):
+    """
+    @return: new position
+    """
+    currentPos = startPos
+    currentTarget = extractCurrentTarget(tacticalPlan)
+
+    while currentPos != currentTarget and currentPos != finalTarget:
+        env = collectCurrentEnv()
+        move = getMove(tacticalPlan, env)
+        execMove(move)
+
+def slimAgentCentricSpec():
+    specs = GRSpec()
+    return specs
 
 def agentCentricSpec(pathSurroundings):
     # QUE will generic parts of specification be passed down?
@@ -42,32 +69,26 @@ def agentCentricSpec(pathSurroundings):
     # NLVL other environmental context as temparuture, grip etc
     env_vars = {}
 
-    for loc in l.targetLocations:
-        env_vars[loc] = 'boolean'
+    # for loc in l.targetLocations:
+    #     env_vars[loc] = 'boolean'
 
     for loc in l.slimLocations:
-        env_vars['o' + loc] = 'boolean'
+        env_vars['o' + loc] = 'boolean' # TODO o+loc results in var 'or' which doesn't work with python gen
 
-    # NLVL speed, 
+    
     sys_vars={ 
         'mlf': 'boolean', 
         'mf': 'boolean',
         'mrf': 'boolean',
     } 
-    # for loc in l.locations:
-    #     sys_vars['m' + loc] = 'boolean'
 
 
     env_init={
         # does not start in an obstacle
-        '! oa',
+        '! op0l0',
         # nor with no way to go
         l.pathExists,
     }
-
-    # for loc in l.locations:
-    #     if loc != 'll':
-    #         env_init |= {'! o'+loc}
 
 
     sys_init={
@@ -124,9 +145,9 @@ def agentCentricSpec(pathSurroundings):
         # no barriers blocking the entire cut
         # there is always a path
         # NOTE this is very hard coded
-        '(olf && orf) -> ! off',
-        '(olf && (! orf)) -> ((! off) || (! orff))',
-        '((! olf) && orf) -> ((! off) || (! olff))',
+        '(op_1l1 && op1l1) -> ! op0l2',
+        '(op_1l1 && (! op1l1)) -> ((! op0l2) || (! op1l1))',
+        '((! op_1l1) && op1l1) -> ((! op0l2) || (! op_1l1))',
 
 
         # '(tllff || tlff || tff || trff || trrff) -> ! (tlf || tf || trf || ta)',
@@ -137,9 +158,9 @@ def agentCentricSpec(pathSurroundings):
     }
 
     # target only in one cut, then transformed into obstacles
-    for loc in l.forwardAppearing:
-            env_safe |= {'((! t{0}) && ({1})) -> o{0}'
-                .format(loc, ' || '.join([locWo for locWo in l.targetLocations if locWo != loc]))}
+    # for loc in l.forwardAppearing:
+    #         env_safe |= {'((! t{0}) && ({1})) -> o{0}'
+    #             .format(loc, ' || '.join([locWo for locWo in l.targetLocations if locWo != loc]))}
 
 
     # NOTE cannot ensure progression by moving obstacles
@@ -155,18 +176,19 @@ def agentCentricSpec(pathSurroundings):
         '(mlf && (! mf) && (! mrf)) || ((! mlf) && mf && (! mrf)) || ((! mlf) && (! mf) && mrf)',
 
         # no collision
-        '! oa',
+        '! op0l0',
+        'X (! op0l0)',
         # no moving into dead ends
-        l.pathExists,
-
-        #'(olf || orf) -> (X (! oa))', # QUE why this formulation? because of GR(1)?
+        'X {0}'.format(l.pathExists),
 
         # NOTE probably bad form
         # only move left if nec
-        '((orf || orff) && (! off)) -> mf',
+        '((op1l1 || op1l2) && (! op0l2)) -> mf',
 
         # move right if pos
-        '(! (orf || orff)) -> mrf',
+        '(! (op1l1 || op1l2)) -> mrf',
+
+        #NLVL attempt to come as close as possible to path obstacle before deciding?
 
     }
 
@@ -181,7 +203,6 @@ def agentCentricSpec(pathSurroundings):
     sys_prog={
         # eventually the agent will be in a target
         #'ta',
-        #'X (mf || mlf || mrf)'
     }
 
     specs = GRSpec(env_vars, sys_vars, env_init, sys_init,
@@ -191,21 +212,30 @@ def agentCentricSpec(pathSurroundings):
 
 specs = agentCentricSpec('')
 specs.moore = False
-specs.qinit = r'\A \E'
+specs.qinit = r'\\A \\E'
 specs.plus_one = False
 
 print(specs)
 
 ctrl = synthesize(specs, solver='omega')
 assert ctrl is not None, 'specification is unrealizable'
-print('realized')
-
-
-
-if not ctrl.save(filename='agentCentric', format='svg'):
-   print(ctrl)
-
+print('realized:')
 # print(ctrl)
-#runs = machines.random_run(ctrl, N=10)
-#print(runs)
+
+# if not ctrl.plot():
+#     print('can not open in dot')
+name = 'agentCentric'
+
+# if not ctrl.save(filename='agentCentric.html'):
+#     print('could not save as dot')
+
+# if not ctrl.save(filename='agentCentric.scxml'):
+#     print('could not save as scxml')
+
+
+write_python_case('{0}.py'.format(name), ctrl, classname="VehicleB")
+
+runs = machines.random_run(ctrl, N=1)
+print('all done')
+
 
