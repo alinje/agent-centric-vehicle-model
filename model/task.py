@@ -1,7 +1,7 @@
 from abc import ABC
 from enum import Enum
 
-from model.space import MapLocationType, Orientation, SensedArea, relative2Absolute
+from model.space import MapLocationType, Orientation, OverlapZoneType, SensedArea, changesPerpendicularLateral, relative2Absolute
 
 class Action(Enum):
     MLF = 1
@@ -9,22 +9,22 @@ class Action(Enum):
     MRF = 3
 
 relativeAction = {}
-relativeAction[Action.MLF] = (-1, 1)
-relativeAction[Action.MF] = (0, 1)
-relativeAction[Action.MRF] = (1, 1)
+relativeAction[Action.MLF] = (-1, 2)
+relativeAction[Action.MF] = (0, 2)
+relativeAction[Action.MRF] = (1, 2)
 
 introducedCoords = {}
-introducedCoords[Action.MF] = [(-2,2), (-1, 2), (0, 2), (1, 2), (2, 2)]
-introducedCoords[Action.MLF] = introducedCoords[Action.MF] + [(-1,0)]
-introducedCoords[Action.MRF] = introducedCoords[Action.MF] + [(1,0)]
+introducedCoords[Action.MF] = [OverlapZoneType.LF, OverlapZoneType.AF, OverlapZoneType.RF]
+introducedCoords[Action.MLF] = [OverlapZoneType.LF, OverlapZoneType.LB, OverlapZoneType.AF]
+introducedCoords[Action.MRF] = [OverlapZoneType.RF, OverlapZoneType.RB, OverlapZoneType.AF]
 
 removedCoords = {}
-removedCoords[Action.MF] = [(-1, 0), (0,0), (1,0), (-2, 2), (2,2)]
-removedCoords[Action.MLF] = [(-1, 0), (0,0), (1,0), (1,1), (1,2), (2,2)]
-removedCoords[Action.MRF] = [(-1, 0), (0,0), (1,0), (-1,1), (-1,2), (-2,2)]
+removedCoords[Action.MF] = [OverlapZoneType.LB, OverlapZoneType.AA, OverlapZoneType.RB]
+removedCoords[Action.MLF] = [OverlapZoneType.LB, OverlapZoneType.RF, OverlapZoneType.RB]
+removedCoords[Action.MRF] = [OverlapZoneType.LF, OverlapZoneType.LB, OverlapZoneType.RB]
 
 
-relativeSensorArea = [(-2,2), (-1, 2), (0, 2), (1, 2), (2, 2), (-1, 1), (0, 1), (1, 1), (-1, 0), (0, 0), (1, 0)]
+# relativeSensorArea = [(-2,2), (-1, 2), (0, 2), (1, 2), (2, 2), (-1, 1), (0, 1), (1, 1), (-1, 0), (0, 0), (1, 0)]
 
 #########################3
 
@@ -44,38 +44,33 @@ class Agent(SpaceOccupying):
 
     def move(self, newLoc, arena):
         self.curLoc = newLoc
-
-        locs = map(
-            lambda coord: relative2Absolute(coord, self.orientation, self.curLoc, arena), 
-            [(-2,2), (-1, 2), (0, 2), (1, 2), (2, 2), (-1, 1), (0, 1), (1, 1), (-1, 0), (0, 0), (1, 0)]
-            )
-        
-        locMap = {}
-        for loc in locs:
-            locMap[(loc.x, loc.y)] = loc
-    
-        self.sensedArea.locations = locMap
+        self.sensedArea.constructSensedArea(newLoc, self.orientation, arena)
 
 
     def applyAction(self, action, arena):
-        # first remove the old locations from the sensorarea
-        removedLocs = map(
-            lambda coord: relative2Absolute(coord, self.orientation, self.curLoc, arena), 
-            removedCoords[action]
-        )
-        self.sensedArea.removeLocations(list(removedLocs))
+        locChange = changesPerpendicularLateral(self.orientation, relativeAction[action])
+        newLoc = arena.locations[(self.curLoc.x+locChange[0], self.curLoc.y+locChange[1])]
+        self.move(newLoc, arena)
 
-        # then set the new location
-        self.curLoc = relative2Absolute(relativeAction[action], self.orientation, self.curLoc, arena)
 
-        # add the locations that appeared from the move
-        newLocs = map(
-            lambda coord: relative2Absolute(coord, self.orientation, self.curLoc, arena), 
-            introducedCoords[action]
-        )
-        # TODO by tulip machine, find a possible next set of inputs
-        for loc in newLocs:
-            self.sensedArea.addLocation(loc)
+        # # first remove the old locations from the sensorarea
+        # removedLocs = map(
+        #     lambda zone: zone.toAbsolute(self.orientation, self.curLoc, arena), 
+        #     removedCoords[action]
+        # )
+        # self.sensedArea.removeLocations(list(removedLocs))
+
+        # # then set the new location
+        # self.curLoc = relative2Absolute(relativeAction[action], self.orientation, self.curLoc, arena)
+
+        # # add the locations that appeared from the move
+        # newLocs = map(
+        #     lambda zone: zone.toAbsolute(self.orientation, self.curLoc, arena), 
+        #     introducedCoords[action]
+        # )
+        # # TODO by tulip machine, find a possible next set of inputs
+        # for loc in newLocs:
+        #     self.sensedArea.addLocation(loc)
         
 
 
@@ -93,7 +88,7 @@ class Task(object):
 
         self.agent = Agent(None, Orientation.EAST, SensedArea({}))
 
-        self.start(arena.locations[(0,2)])
+        self.start(arena.locations[(1,2)])
 
     def start(self, startLocation):
         if self.arena.locationType(startLocation.x, startLocation.y) != MapLocationType.START:

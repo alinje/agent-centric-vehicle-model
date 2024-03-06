@@ -1,7 +1,7 @@
 from abc import ABC
 from appControl.exceptions import ControllerException
 
-from model.space import MapLocationType, absolute2Relative
+from model.space import MapLocationType, OverlapZoneType, absolute2Relative
 from model.task import Action
 
 
@@ -61,10 +61,10 @@ class Control(object):
 def sensorArea2inputs(sensorArea, agentDir, curLoc):
     # TODO to input vars
     inputs = {}
-    for coord in sensorArea.locations:
-        loc = sensorArea.locations[coord]
-        k = 'o' + str(absolute2Relative(loc, agentDir, curLoc))
-        inputs[k] = loc.occ == MapLocationType.OFFROAD
+    for zt in sensorArea.zones:
+        zone = sensorArea.zones[zt]
+        k = 'o' + str(zone)
+        inputs[k] = zone.occupied() == MapLocationType.OFFROAD
     return inputs
 
 def output2ActionEnum(output):

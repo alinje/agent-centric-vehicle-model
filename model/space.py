@@ -77,6 +77,80 @@ class RelativeLocation(Location):
     def __str__(self):
         return f'p{str(self.perpendicular).replace("-", "_")}l{str(self.lateral).replace("-", "_")}'
 
+class AbsoluteZone(object):
+    def __init__(self, locations, occ):
+        self.locations = locations
+        self.occ = occ
+
+class OverlapZoneType(Enum):
+    LF = 1
+    LB = 2
+    AF = 3
+    AA = 4
+    RF = 5
+    RB = 6
+class OverlapZone(object):
+    def __init__(self, tp, locations):
+        self.tp = tp
+        self.locations = locations
+
+    def occupied(self):
+        for loc in self.locations:
+            if loc.occ == MapLocationType.OFFROAD:
+                return MapLocationType.OFFROAD
+        for loc in self.locations:
+            if loc.occ == MapLocationType.START or loc.occ == MapLocationType.TARGET:
+                return loc.occ
+        return MapLocationType.ROAD
+
+    def __str__(self):
+        return OverlapZone.overlapZoneString(self.tp)
+
+    @staticmethod
+    def overlapZoneString(zone): 
+        dic = {
+            OverlapZoneType.LF: 'lf',
+            OverlapZoneType.LB: 'lb',
+            OverlapZoneType.AF: 'f',
+            OverlapZoneType.AA: 'a',
+            OverlapZoneType.RF: 'rf',
+            OverlapZoneType.RB: 'rb',
+        }
+        return dic[zone]
+    
+    
+    pathExists = '! (olf && of && orf)'
+
+    forwardRemaining = ['lf', 'f', 'rf']
+    leftForwardRemaining = ['lf', 'f', 'a']
+    rightForwardRemaining = ['f', 'a', 'rf']
+
+    @staticmethod
+    def forwardMove(loc):
+        if 'f' is loc:
+            return 'a'
+        return loc.replace('f', 'b')
+    
+    @staticmethod
+    def leftForwardMove(loc):
+        if 'a' is loc:
+            return 'rb'
+        if 'f' is loc:
+            return 'rf'
+        return 'a'
+    
+    @staticmethod
+    def rightForwardMove(loc):
+        if 'a' is loc:
+            return 'lb'
+        if 'f' is loc:
+            return 'lf'
+        return 'a'
+
+    def toAbsolute(self, absoluteStartingPoint, orientation, arena):
+        absZone = AbsoluteZone([self.locations])
+        return absZone
+
 
 def relative2Absolute(relLocInp, orientation, absLoc, arena):
     """
@@ -147,14 +221,29 @@ class Arena(object):
                 lx = x
         return hx-lx
 
-class SensedArea(object):
+
+def changesPerpendicularLateral(curDir, changes):
+    """
+    Changes from input (p,l) in relative formulation to output in changes in global formulation."""
+    (p,l) = changes
+    if curDir == Orientation.NORTH:
+        return (p, -l)
+    if curDir == Orientation.EAST:
+        return (l, p)
+    if curDir == Orientation.SOUTH:
+        return (-p, l)
+    if curDir == Orientation.WEST:
+        return (-l, -p)
+    raise ValueError('curDir is None')
+
+class SensedArea(object): #TODO inheritence
     """
     A map of all locations currently covered by vehicle sensors.
     
     Attributes:
-        locations (dict of Tuple[int, int]: SensedLocation)"""
-    def __init__(self, locations):
-        self.locations = locations
+        zones (dict of OverlapZoneType: OverlapZone)"""
+    def __init__(self, zones):
+        self.zones = zones
 
     def removeLocations(self, coords):
         for coord in coords:
@@ -162,3 +251,22 @@ class SensedArea(object):
 
     def addLocation(self, loc):
         self.locations[(loc.x, loc.y)] = loc
+
+    def constructSensedArea(self, curLoc, curDir, arena):
+        cx = curLoc.x
+        cy = curLoc.y
+        changes = { 
+            OverlapZoneType.LF: [changesPerpendicularLateral(curDir, (-1,1)), changesPerpendicularLateral(curDir, (-1,2))],
+            OverlapZoneType.LB: [changesPerpendicularLateral(curDir, (-1,0)), changesPerpendicularLateral(curDir, (-1,-1))],
+            OverlapZoneType.AF: [changesPerpendicularLateral(curDir, (0,2)), changesPerpendicularLateral(curDir, (0,3))],
+            OverlapZoneType.AA: [changesPerpendicularLateral(curDir, (0,0)), changesPerpendicularLateral(curDir, (0,1))],
+            OverlapZoneType.RF: [changesPerpendicularLateral(curDir, (1,1)), changesPerpendicularLateral(curDir, (1,2))],
+            OverlapZoneType.RB: [changesPerpendicularLateral(curDir, (1,0)), changesPerpendicularLateral(curDir, (1,-1))],
+        }
+        
+        zones = {}
+        for k, v in changes.items():
+            locs = [arena.locations[(cx+v[0][0], cy+v[0][1])], arena.locations[(cx+v[1][0], cy+v[1][1])]]
+            zones[k] = OverlapZone(k, locs)
+
+        self.zones = zones

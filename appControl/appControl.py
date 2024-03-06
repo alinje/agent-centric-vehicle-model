@@ -1,6 +1,5 @@
 
 import sys
-from agentCentric import VehicleB
 from appControl.exceptions import MapException
 from model.runner.controller import Control
 from model.space import Arena, MapLocation, MapLocationType
@@ -9,7 +8,7 @@ from visual.visualRun import VehiclePane
 from PySide6.QtWidgets import QApplication
 
 
-def showGraphicView(mapFileName, controllerFileName):
+def showGraphicView(mapFileName, controller):
     """
     
     Parameters:
@@ -17,7 +16,7 @@ def showGraphicView(mapFileName, controllerFileName):
         controllerFileName (string): Path to file representing a controller."""
     arena = map2Arena(mapFileName)
     task = Task(arena)
-    control = Control(VehicleB(), task)
+    control = Control(controller, task)
     handler = control.next
     
     app = QApplication([])
@@ -30,10 +29,6 @@ def showGraphicView(mapFileName, controllerFileName):
 
 
     
-# def controller2Handler(controllerFileName):
-#     control = VehicleB()
-#     controlFunc = lambda args : control.move(*args)
-#     return controlFunc
 
 def map2Arena(mapFileName):
     locations = {}

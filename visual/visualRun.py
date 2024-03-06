@@ -4,7 +4,7 @@ from PySide6 import QtCore, QtWidgets
 from PySide6.QtGui import QPalette, QColor, QPixmap
 from appControl.exceptions import ControllerException
 
-from model.space import MapLocationType, absolute2Relative
+from model.space import MapLocationType, OverlapZoneType, absolute2Relative
 
 
 class VehiclePane(QtWidgets.QWidget):
@@ -14,16 +14,16 @@ class VehiclePane(QtWidgets.QWidget):
         self.nextStateHandler = nextStateHandler
 
         self.windowTitle = 'yodeli'
-        #self.paneTxt = QtWidgets.QLabel("yodeli yodeliii", alignment=QtCore.Qt.AlignCenter)
+        self.paneTxt = QtWidgets.QLabel("yodeli yodeliii", alignment=QtCore.Qt.AlignCenter)
         self.arenaPane = self.createArenaPane(self.arena, 100, 800)
         self.sensorPane, wrapSensorAreaPane = self.createSensorAreaPane(initSensorArea, 150, 200)
         self.toolBar = self.createToolBar()
 
-
         self.layout = QtWidgets.QGridLayout(self)
-        self.layout.addWidget(self.arenaPane, 0, 0)
-        self.layout.addWidget(wrapSensorAreaPane, 1, 0)
-        self.layout.addWidget(self.toolBar, 2, 0)
+        self.layout.addWidget(self.arenaPane, 0, 0, 1, 2)
+        self.layout.addWidget(wrapSensorAreaPane, 1, 0, 1, 1)
+        self.layout.addWidget(self.paneTxt, 1, 1, 1, 1)
+        self.layout.addWidget(self.toolBar, 2, 0, 1, 2)
         self.layout.setRowStretch(0, 10)
         self.layout.setRowStretch(1, 10)
         self.layout.setRowStretch(2, 2)
@@ -81,15 +81,10 @@ class VehiclePane(QtWidgets.QWidget):
         
         widget.setLayout(layout)
         widget.setFixedWidth(w)
-        widget.setFixedHeight(h+20)
+        widget.setFixedHeight(h+50)
         return widget
-
-    def createSensorAreaPane(self, initSensorArea, h, w):
-        widget = QtWidgets.QWidget()
-        layout = QtWidgets.QGridLayout()
-        widget.setLayout(layout)
-        #widget.setFixedHeight(150)
-        #widget.setFixedWidth(200)
+    
+    def createWingedSensorArea(self, layout, initSensorArea, h, w):
         layout.rowCount=3
         layout.columnCount=5
         layout.setVerticalSpacing(2)
@@ -106,6 +101,42 @@ class VehiclePane(QtWidgets.QWidget):
                 2-loc.x,
                 loc.y
             )
+
+    def createOverlapSensorArea(self, layout, initSensorArea, h, w):
+        layout.rowCount=5
+        layout.columnCount=3
+        layout.setVerticalSpacing(2)
+        layout.setHorizontalSpacing(2)
+        # for i in range(0, layout.columnCount):
+        #     layout.setColumnStretch(i, 1)
+        # for i in range(0, layout.rowCount):
+        #     layout.setRowMinimumHeight(i, 1)
+
+        # create the individual colored cards
+        zoneDict = {
+            OverlapZoneType.LF: (ColoredPane(LocationType2Color(initSensorArea.zones[OverlapZoneType.LF].occupied())), 1, 0, 2, 1),
+            OverlapZoneType.LB: (ColoredPane(LocationType2Color(initSensorArea.zones[OverlapZoneType.LB].occupied())), 3, 0, 2, 1),
+            OverlapZoneType.AF: (ColoredPane(LocationType2Color(initSensorArea.zones[OverlapZoneType.AF].occupied())), 0, 1, 2, 1),
+            OverlapZoneType.AA: (ColoredPane(LocationType2Color(initSensorArea.zones[OverlapZoneType.AA].occupied())), 2, 1, 2, 1),
+            OverlapZoneType.RF: (ColoredPane(LocationType2Color(initSensorArea.zones[OverlapZoneType.RF].occupied())), 1, 2, 2, 1),
+            OverlapZoneType.RB: (ColoredPane(LocationType2Color(initSensorArea.zones[OverlapZoneType.RB].occupied())), 3, 2, 2, 1),
+        }
+
+        for [p, py, px, ph, pw] in zoneDict.values():
+            layout.addWidget(p, py, px, ph, pw)
+
+        self.zoneDict = {k: v[0] for k, v in zoneDict.items()}
+
+
+        
+
+    def createSensorAreaPane(self, initSensorArea, h, w):
+        widget = QtWidgets.QWidget()
+        layout = QtWidgets.QGridLayout()
+        widget.setLayout(layout)
+        #widget.setFixedHeight(150)
+        #widget.setFixedWidth(200)
+        self.createOverlapSensorArea(layout, initSensorArea, h, w)
         
 
         # a wrapper that gives context to the sensor map
@@ -136,16 +167,11 @@ class VehiclePane(QtWidgets.QWidget):
 
         # show new sensor pane
         layout = self.sensorPane.layout()
-        for coord in agent.sensedArea.locations:
-            loc = agent.sensedArea.locations[coord]
-            relLoc = absolute2Relative(loc, agent.orientation, agent.curLoc)
-            tileRow = 2-relLoc.lateral
-            tileCol = relLoc.perpendicular+2
-            tile = layout.itemAtPosition(tileRow, tileCol).widget()
-
+        for t, tile in self.zoneDict.items():
             palette = tile.palette()
-            palette.setColor(QPalette.ColorRole.Window, QColor(LocationType2Color(loc.occ)))
+            palette.setColor(QPalette.ColorRole.Window, QColor(LocationType2Color(agent.sensedArea.zones[t].occupied())))
             tile.setPalette(palette)
+
         # TODO mark on arena pane
         
         self.toolBarNextBut.setEnabled(True)
