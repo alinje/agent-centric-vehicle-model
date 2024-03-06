@@ -9,9 +9,9 @@ class Action(Enum):
     MRF = 3
 
 relativeAction = {}
-relativeAction[Action.MLF] = (-1, 2)
+relativeAction[Action.MLF] = (-1, 1)
 relativeAction[Action.MF] = (0, 2)
-relativeAction[Action.MRF] = (1, 2)
+relativeAction[Action.MRF] = (1, 1)
 
 introducedCoords = {}
 introducedCoords[Action.MF] = [OverlapZoneType.LF, OverlapZoneType.AF, OverlapZoneType.RF]
