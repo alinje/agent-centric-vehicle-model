@@ -15,7 +15,7 @@ class VehiclePane(QtWidgets.QWidget):
 
         self.windowTitle = 'yodeli'
         self.paneTxt = QtWidgets.QLabel("yodeli yodeliii", alignment=QtCore.Qt.AlignCenter)
-        self.arenaPane = self.createArenaPane(self.arena, 100, 800)
+        self.arenaPane = self.createArenaPane(self.arena, initSensorArea, 100, 800)
         self.sensorPane, wrapSensorAreaPane = self.createSensorAreaPane(initSensorArea, 150, 200)
         self.toolBar = self.createToolBar()
 
@@ -28,12 +28,14 @@ class VehiclePane(QtWidgets.QWidget):
         self.layout.setRowStretch(1, 10)
         self.layout.setRowStretch(2, 2)
 
-
-        with open('visual\\style.qss', 'r') as f:
-            _style = f.read()
-            self.setStyleSheet(_style)
+        self.loadStyleSheet('visual\\style.qss')
 
         self.toolBarNextBut.clicked.connect(self.nextState)
+
+    def loadStyleSheet(self, path):
+        with open(path, 'r') as f:
+            _style = f.read()
+            self.setStyleSheet(_style)
 
     def createToolBar(self):
         # TODO
@@ -56,29 +58,39 @@ class VehiclePane(QtWidgets.QWidget):
         return widget
 
 
-    def createArenaPane(self, initArena, h, w):
+    def createArenaPane(self, initArena, initSensorArea, h, w):
         arenaH = initArena.getHeight()
         arenaW = initArena.getWidth()
         
         widget = QtWidgets.QWidget()
         layout = QtWidgets.QGridLayout()
-        layout.setVerticalSpacing(2)
-        layout.setHorizontalSpacing(2)
+        layout.setVerticalSpacing(0)
+        layout.setHorizontalSpacing(0)
         layout.rowCount=arenaH
         layout.columnCount=arenaW
-        for i in range(0, layout.columnCount):
-            layout.setColumnMinimumWidth(i, w/arenaW)
-        for i in range(0, layout.rowCount):
-            layout.setRowMinimumHeight(i, h/arenaH)
+        # for i in range(0, layout.columnCount):
+        #     layout.setColumnMinimumWidth(i, w/arenaW)
+        # for i in range(0, layout.rowCount):
+        #     layout.setRowMinimumHeight(i, h/arenaH)
 
 
         for loc in initArena.locations.values():
+            tile = QtWidgets.QFrame()
+            tile.setProperty("highlighted", False)
+            tile.setStyleSheet(f'background-color: {LocationType2Color(loc.occ)}')
             layout.addWidget(
-                ColoredPane(LocationType2Color(loc.occ)),
+                tile,
                 loc.y,
                 loc.x
             )
-        
+
+        # frame the tiles in the sensor area
+        for zone in initSensorArea.zones.values():
+            for loc in zone.locations:
+                tile = layout.itemAtPosition(loc.y, loc.x).widget()
+                tile.setProperty("highlighted", True)
+                # tile.set
+
         widget.setLayout(layout)
         widget.setFixedWidth(w)
         widget.setFixedHeight(h+50)
@@ -166,14 +178,25 @@ class VehiclePane(QtWidgets.QWidget):
             return
 
         # show new sensor pane
-        layout = self.sensorPane.layout()
         for t, tile in self.zoneDict.items():
             palette = tile.palette()
             palette.setColor(QPalette.ColorRole.Window, QColor(LocationType2Color(agent.sensedArea.zones[t].occupied())))
             tile.setPalette(palette)
 
-        # TODO mark on arena pane
+        # TODO mark new position on arena pane
+        arenaLayout = self.arenaPane.layout()
+        for tile in self.arenaPane.findChildren(QtWidgets.QFrame):
+            tile.setProperty("highlighted", False)
+
+        for zone in agent.sensedArea.zones.values():
+            for loc in zone.locations:
+                tile = arenaLayout.itemAtPosition(loc.y, loc.x).widget()
+                tile.setProperty("highlighted", True)
+                # tile.set
         
+        # I don't know why this needs to be reloaded, but otherwise highlights won't update
+        self.loadStyleSheet('visual\\style.qss')
+
         self.toolBarNextBut.setEnabled(True)
 
 class ColoredPane(QtWidgets.QWidget):

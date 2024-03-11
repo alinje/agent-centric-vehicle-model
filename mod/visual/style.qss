@@ -1,0 +1,45 @@
+
+QWidget#toolBar {
+    background-color: #D3D0CB;
+    border-style: ridge;
+    border-width: 2px;
+    border-color: #393E41;
+}
+
+QLabel {
+    color: #393E41;
+}
+
+QGridLayout {
+    margin: 1; 
+    padding: 1;
+    background-color: #ffffff;
+}
+
+QFrame {
+    margin: -1; 
+    padding: -1;
+}
+
+*[highlighted="true"] {
+    border: 3px solid #e7bb41;
+
+ }
+
+*[highlighted="false"] {
+    border: 3px solid #ffffff;
+}
+
+
+QPushButton {
+    color: #393e41;
+    background-color: #d3d0cb;
+    padding: 10px 0px;
+    border-radius: 8px;
+    border: 2px solid #44bba4;
+}
+
+QPushButton:hover {
+    background-color: #e7e5df;
+}
+

@@ -32,7 +32,6 @@ class Control(object):
         (Agent)"""
     def next(self):
         inputs = sensorArea2inputs(self.task.agent.sensedArea, self.task.agent.orientation, self.task.agent.curLoc)
-        # move = self.controller.move(inputs['op_1l1'], inputs['op0l1'], inputs['op0l0'], inputs['op0l2'], inputs['op_1l2'], inputs['op1l0'], inputs['op1l1'], inputs['op_2l2'], inputs['op1l2'], inputs['op2l2'], inputs['op_1l0'])
         try:
             move = self.controller.move(**inputs)
         except ValueError as e:
