@@ -1,7 +1,8 @@
 from abc import ABC
 from appControl.exceptions import ControllerException
 
-from model.space import MapLocationType, OverlapZoneType, absolute2Relative
+
+from model.space import LocationType, OverlapZoneType, absolute2Relative
 from model.task import Action
 
 
@@ -23,9 +24,11 @@ class Control(object):
     """
     Attributes:
         controller (Controller): Transducer controller."""
-    def __init__(self, controller, task):
+    def __init__(self, controller, task, transMap):
         self.controller = controller
         self.task = task
+        self.transMap = transMap
+        self.task.start(envInitMoves=self.transMap["Sinit"])
 
     """
     Returns:
@@ -37,8 +40,12 @@ class Control(object):
         except ValueError as e:
             raise ControllerException("Environment state is undefined in controller") from e
 
+        # find possible next states
+        envNextMoves = self.transMap[str(self.controller.state)]
+
+        # apply output to map
         act = output2ActionEnum(move)
-        self.task.agent.applyAction(act, self.task.arena)
+        self.task.agent.applyAction(act, self.task.arena, envNextMoves)
         return self.task.agent
 
     def nextOptions(self):
@@ -57,13 +64,15 @@ class Control(object):
     def randInitSensArea(self):
         pass
 
+
+
 def sensorArea2inputs(sensorArea, agentDir, curLoc):
     # TODO to input vars
     inputs = {}
     for zt in sensorArea.zones:
         zone = sensorArea.zones[zt]
         k = 'o' + str(zone)
-        inputs[k] = zone.occupied() == MapLocationType.OFFROAD
+        inputs[k] = zone.occupied() == LocationType.OFFROAD or zone.occupied() == LocationType.OBSTACLE
     return inputs
 
 def output2ActionEnum(output):

@@ -2,9 +2,9 @@
 from abc import ABC
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtGui import QPalette, QColor, QPixmap
-from appControl.exceptions import ControllerException
+from appControl.exceptions import ControllerException, MapException
 
-from model.space import MapLocationType, OverlapZoneType, absolute2Relative
+from model.space import LocationType, OverlapZoneType, absolute2Relative
 
 
 class VehiclePane(QtWidgets.QWidget):
@@ -14,7 +14,7 @@ class VehiclePane(QtWidgets.QWidget):
         self.nextStateHandler = nextStateHandler
 
         self.windowTitle = 'yodeli'
-        self.paneTxt = QtWidgets.QLabel("yodeli yodeliii", alignment=QtCore.Qt.AlignCenter)
+        self.paneTxt = QtWidgets.QLabel("", alignment=QtCore.Qt.AlignCenter)
         self.arenaPane = self.createArenaPane(self.arena, initSensorArea, 100, 800)
         self.sensorPane, wrapSensorAreaPane = self.createSensorAreaPane(initSensorArea, 150, 200)
         self.toolBar = self.createToolBar()
@@ -45,7 +45,7 @@ class VehiclePane(QtWidgets.QWidget):
         self.toolBarLayout = layout
         self.toolBarNextBut = QtWidgets.QPushButton('>')
         self.toolBarBfBut = QtWidgets.QPushButton('<')
-        self.toolBarInfoLabel = QtWidgets.QLabel("yolo")
+        self.toolBarInfoLabel = QtWidgets.QLabel("")
 
         layout.addWidget(self.toolBarBfBut)
         layout.addWidget(self.toolBarNextBut)
@@ -77,7 +77,7 @@ class VehiclePane(QtWidgets.QWidget):
         for loc in initArena.locations.values():
             tile = QtWidgets.QFrame()
             tile.setProperty("highlighted", False)
-            tile.setStyleSheet(f'background-color: {LocationType2Color(loc.occ)}')
+            tile.setStyleSheet(f'background-color: {LocationType2Color(loc.occ).name()}')
             layout.addWidget(
                 tile,
                 loc.y,
@@ -166,24 +166,33 @@ class VehiclePane(QtWidgets.QWidget):
 
         return (widget, wrapWidget)
 
+    def createNextStatePane(self):
+        pass
+
+    # TODO next with args
     @QtCore.Slot()
     def nextState(self):
         self.toolBarNextBut.setEnabled(False)
         # prompt new state from model
+
+        # remove agent mark from arena pane
+        # for tile in self.arenaPane.findChildren(QtWidgets.QFrame):
+        #     if tile
+
+
         try:
             agent = self.nextStateHandler()
         except ControllerException as e:
             print(e)
             self.toolBarInfoLabel.setText('No plan for current environment state')
             return
+        except MapException as e:
+            self.toolBarInfoLabel.setText(str(e))
+            self.toolBarInfoLabel.setStyleSheet(f'color: red')
+            return
 
-        # show new sensor pane
-        for t, tile in self.zoneDict.items():
-            palette = tile.palette()
-            palette.setColor(QPalette.ColorRole.Window, QColor(LocationType2Color(agent.sensedArea.zones[t].occupied())))
-            tile.setPalette(palette)
 
-        # TODO mark new position on arena pane
+        # mark new position on arena pane
         arenaLayout = self.arenaPane.layout()
         for tile in self.arenaPane.findChildren(QtWidgets.QFrame):
             tile.setProperty("highlighted", False)
@@ -192,10 +201,15 @@ class VehiclePane(QtWidgets.QWidget):
             for loc in zone.locations:
                 tile = arenaLayout.itemAtPosition(loc.y, loc.x).widget()
                 tile.setProperty("highlighted", True)
-                # tile.set
+                tile.setStyleSheet(f'background-color: {LocationType2Color(loc.occ).name()}')
         
         # I don't know why this needs to be reloaded, but otherwise highlights won't update
         self.loadStyleSheet('visual\\style.qss')
+
+
+        # show new sensor pane
+        for t, tile in self.zoneDict.items():
+            tile.changeColor(LocationType2Color(agent.sensedArea.zones[t].occupied()))
 
         self.toolBarNextBut.setEnabled(True)
 
@@ -204,24 +218,18 @@ class ColoredPane(QtWidgets.QWidget):
         super(ColoredPane, self).__init__()
         self.setAutoFillBackground(True)
         palette = self.palette()
-        palette.setColor(QPalette.ColorRole.Window, QColor(color))
+        palette.setColor(QPalette.ColorRole.Window, color)
         self.setPalette(palette)
-        # self.setStyleSheet("background-color: blue;")
 
-class ArenaPane(QtWidgets.QGridLayout):
-    def __init__(self, initArena, h, w, *args, **kwargs):
-        super(self).__init__(*args, **kwargs)
-        arenaH = initArena.getHeight()
-        arenaW = initArena.getWidth()
+    def changeColor(self, color):
+        palette = self.palette()
+        palette.setColor(QPalette.ColorRole.Window, color)
+        self.setPalette(palette)
 
-        table = QtWidgets.QGraphicsScene()
-        table.tileHeight = h/arenaH
-        table.tileWidth = w/arenaW
-
-        for i in range(0, arenaH):
-            for j in range(0, arenaW):
-                table.addItem()
-
+def ColoredFrame(color):
+    
+    tile = QtWidgets.QFrame()
+    tile.setStyleSheet(f'background-color: {LocationType2Color(loc.occ).name()}')
 
 
 
@@ -240,12 +248,21 @@ class TaskObserver(Observer):
 
         
 
-def LocationType2Color(tp):
-    if tp == MapLocationType.ROAD:
-        return 'gray'
-    if tp == MapLocationType.TARGET:
-        return 'green'
-    if tp == MapLocationType.OFFROAD:
-        return 'darkGreen'
-    if tp == MapLocationType.START:
-        return 'blue'
+def LocationType2Color(tp) -> QColor:
+    if tp == LocationType.ROAD:
+        return QColor(141,141,141) # gray
+    if tp == LocationType.TARGET or tp == LocationType.START:
+        return QColor(75,189,176) # teal
+    if tp == LocationType.OFFROAD:
+        return QColor(46,133,55) # green
+    if tp == LocationType.CLEARED_ROAD:
+        return QColor(181,181,181) # light gray
+    if tp == LocationType.OBSTACLE:
+        return QColor(222,75,200) # pink
+    if tp == LocationType.AGENT:
+        return QColor(145,162,230) # västtrafik blue
+    if tp == LocationType.VISITED:
+        return QColor(121,121,121)
+    return QColor(255,0,0) # alarming red
+
+

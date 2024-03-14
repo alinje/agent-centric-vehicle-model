@@ -1,6 +1,11 @@
 from abc import ABC
 from enum import Enum
 import sys
+import copy
+import random
+from typing import List
+
+from appControl.exceptions import ControllerException, MapException
 
 class Location(ABC):
     def __init__(self):
@@ -26,21 +31,6 @@ class LocationType(Enum):
     AGENT = 7
     VISITED = 8
 
-class MapLocationType(Enum):
-    NAN = 0
-    ROAD = 1
-    TARGET = 2
-    OFFROAD = 3
-    START = 4
-    
-
-class SensedLocationType(Enum):
-    NAN = 0
-    ROAD = 1
-    TARGET = 2
-    OFFROAD = 3
-    START = 4
-    OBSTACLE = 5
 
 class Orientation(Enum):
     NORTH = 1
@@ -50,14 +40,14 @@ class Orientation(Enum):
 
 class MapLocation(AbsoluteLocation):
     """
-    @type occ: MapLocationType"""
+    @type occ: LocationType"""
     def __init__(self, x, y, occ):
         super().__init__(x, y)
         self.occ = occ
 
 class SensedLocation(AbsoluteLocation):
     """
-    @type occ: SensedLocationType"""
+    @type occ: LocationType"""
     def __init__(self, x, y, occ):
         super().__init__(x, y)
         self.occ = occ
@@ -65,11 +55,11 @@ class SensedLocation(AbsoluteLocation):
 class RelativeLocation(Location):
     """
     Attributes:
-        occ (SensedLocationType)
+        occ (LocationType)
         perpendicular (int)
         lateral (int)
     """
-    def __init__(self, perpendicular, lateral, occ=SensedLocationType.NAN):
+    def __init__(self, perpendicular, lateral, occ=LocationType.NAN):
         self.perpendicular = perpendicular
         self.lateral = lateral
         self.occ = occ
@@ -94,14 +84,31 @@ class OverlapZone(object):
         self.tp = tp
         self.locations = locations
 
-    def occupied(self):
+    def occupied(self) -> LocationType:
         for loc in self.locations:
-            if loc.occ == MapLocationType.OFFROAD:
-                return MapLocationType.OFFROAD
+            if loc.occ == LocationType.OFFROAD:
+                return LocationType.OFFROAD
         for loc in self.locations:
-            if loc.occ == MapLocationType.START or loc.occ == MapLocationType.TARGET:
+            if loc.occ == LocationType.START or loc.occ == LocationType.TARGET:
                 return loc.occ
-        return MapLocationType.ROAD
+        return self.locations[0].occ#LocationType.ROAD
+    
+    def markPath(self, present) -> None:
+        for loc in self.locations:
+            if present:
+                loc.occ = LocationType.AGENT
+            else:
+                loc.occ = LocationType.VISITED
+    
+    def sensorAdjust(self, sensorOccupation) -> None:
+        if sensorOccupation == LocationType.OBSTACLE and self.occupied() != LocationType.OFFROAD:
+            for loc in self.locations:
+                if loc.occ == LocationType.ROAD:
+                    loc.occ = LocationType.OBSTACLE
+        else:
+            for loc in self.locations:
+                if loc.occ == LocationType.ROAD:
+                    loc.occ = LocationType.CLEARED_ROAD
 
     def __str__(self):
         return OverlapZone.overlapZoneString(self.tp)
@@ -127,23 +134,23 @@ class OverlapZone(object):
 
     @staticmethod
     def forwardMove(loc):
-        if 'f' is loc:
+        if 'f' == loc:
             return 'a'
         return loc.replace('f', 'b')
     
     @staticmethod
     def leftForwardMove(loc):
-        if 'a' is loc:
+        if 'a' == loc:
             return 'rb'
-        if 'f' is loc:
+        if 'f' == loc:
             return 'rf'
         return 'a'
     
     @staticmethod
     def rightForwardMove(loc):
-        if 'a' is loc:
+        if 'a' == loc:
             return 'lb'
-        if 'f' is loc:
+        if 'f' == loc:
             return 'lf'
         return 'a'
 
@@ -171,7 +178,7 @@ def relative2Absolute(relLocInp, orientation, absLoc, arena):
     # transform to absolute coordinates
     coord = (absLoc.x + convRel[0], absLoc.y + convRel[1])
     if (coord[0] < 0 or coord[0] > arena.getWidth() or coord[1] < 0 or coord[1] > arena.getHeight()):
-        return MapLocation(coord[0], coord[1], MapLocationType.NAN)
+        return MapLocation(coord[0], coord[1], LocationType.NAN)
     return arena.locations[coord]
 
 def absolute2Relative(absLoc, orientation, agentLoc):
@@ -220,7 +227,13 @@ class Arena(object):
             if x < lx:
                 lx = x
         return hx-lx
-
+    
+    def getStartLocations(self) -> List[MapLocation]:
+        startLocs = []
+        for loc in self.locations.values():
+            if loc.occ == LocationType.START:
+                startLocs.append(loc)
+        return startLocs
 
 def changesPerpendicularLateral(curDir, changes):
     """
@@ -252,7 +265,13 @@ class SensedArea(object): #TODO inheritence
     def addLocation(self, loc):
         self.locations[(loc.x, loc.y)] = loc
 
-    def constructSensedArea(self, curLoc, curDir, arena):
+    def agentZone(self) -> OverlapZone:
+        return self.zones[OverlapZoneType.AA]
+
+    def markMove(self, present):
+        self.agentZone().markPath(present)
+
+    def constructSensedArea(self, curLoc, curDir, arena, envNextMoves) -> None:
         cx = curLoc.x
         cy = curLoc.y
         changes = { 
@@ -266,7 +285,35 @@ class SensedArea(object): #TODO inheritence
         
         zones = {}
         for k, v in changes.items():
-            locs = [arena.locations[(cx+v[0][0], cy+v[0][1])], arena.locations[(cx+v[1][0], cy+v[1][1])]]
+            try:
+                locs = [arena.locations[(cx+v[0][0], cy+v[0][1])], arena.locations[(cx+v[1][0], cy+v[1][1])]]
+            except KeyError:
+                raise MapException(f'Map end, position ({cx+v[0][0]}, {cy+v[0][1]}) and/or {cx+v[1][0]}, {cy+v[1][1]} does not exist')
             zones[k] = OverlapZone(k, locs)
 
+        remainingNextMoves = copy.deepcopy(envNextMoves)
+        try:
+            stateData = remainingNextMoves.pop(random.randint(0, len(remainingNextMoves)-1))
+            while not self.applicableState(zones.values(), stateData):
+                stateData = remainingNextMoves.pop(random.randint(0, len(remainingNextMoves)-1))
+        except ValueError as e:
+            zoneStrs = []
+            for zone in zones.values():
+                zoneStrs.append(f'{str(zone)}: {str(zone.occupied())}')
+            raise ControllerException(f'No next state is compatible with map, \n\nmap:\n{'\n'.join(zoneStrs)}\n\nnext states available:\n{str(envNextMoves)}')
+        self.applyState(zones.values(), stateData)
         self.zones = zones
+
+    def applicableState(self, mapData, stateData):
+        for zone in mapData:
+            if zone.occupied() is LocationType.OFFROAD and stateData[f'o{str(zone)}'] != 'true':
+                return False
+        return True
+
+    def applyState(self, mapData, stateData):
+        for zone in mapData:
+            if stateData[f'o{str(zone)}'] == 'true':
+                zone.sensorAdjust(LocationType.OBSTACLE)
+            else:
+                zone.sensorAdjust(LocationType.CLEARED_ROAD) # TODO NAN?
+

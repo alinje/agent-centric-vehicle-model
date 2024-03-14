@@ -1,7 +1,8 @@
 from abc import ABC
 from enum import Enum
+import random
 
-from model.space import MapLocationType, Orientation, OverlapZoneType, SensedArea, changesPerpendicularLateral, relative2Absolute
+from model.space import AbsoluteLocation, LocationType, Orientation, OverlapZoneType, SensedArea, changesPerpendicularLateral, relative2Absolute
 
 class Action(Enum):
     MLF = 1
@@ -42,35 +43,17 @@ class Agent(SpaceOccupying):
         self.orientation = orientation
         self.sensedArea = sensedArea
 
-    def move(self, newLoc, arena):
+    def move(self, newLoc, arena, envNextMoves):
         self.curLoc = newLoc
-        self.sensedArea.constructSensedArea(newLoc, self.orientation, arena)
+        self.sensedArea.constructSensedArea(newLoc, self.orientation, arena, envNextMoves)
 
+        self.sensedArea.markMove(True)
 
-    def applyAction(self, action, arena):
+    def applyAction(self, action, arena, envNextMoves):
         locChange = changesPerpendicularLateral(self.orientation, relativeAction[action])
         newLoc = arena.locations[(self.curLoc.x+locChange[0], self.curLoc.y+locChange[1])]
-        self.move(newLoc, arena)
-
-
-        # # first remove the old locations from the sensorarea
-        # removedLocs = map(
-        #     lambda zone: zone.toAbsolute(self.orientation, self.curLoc, arena), 
-        #     removedCoords[action]
-        # )
-        # self.sensedArea.removeLocations(list(removedLocs))
-
-        # # then set the new location
-        # self.curLoc = relative2Absolute(relativeAction[action], self.orientation, self.curLoc, arena)
-
-        # # add the locations that appeared from the move
-        # newLocs = map(
-        #     lambda zone: zone.toAbsolute(self.orientation, self.curLoc, arena), 
-        #     introducedCoords[action]
-        # )
-        # # TODO by tulip machine, find a possible next set of inputs
-        # for loc in newLocs:
-        #     self.sensedArea.addLocation(loc)
+        self.sensedArea.markMove(False)
+        self.move(newLoc, arena, envNextMoves)
         
 
 
@@ -88,9 +71,12 @@ class Task(object):
 
         self.agent = Agent(None, Orientation.EAST, SensedArea({}))
 
-        self.start(arena.locations[(1,2)])
+       
 
-    def start(self, startLocation):
-        if self.arena.locationType(startLocation.x, startLocation.y) != MapLocationType.START:
+    def start(self, envInitMoves, startLocation: AbsoluteLocation=None) -> None:
+        if startLocation == None:
+            startLocations = self.arena.getStartLocations()
+            startLocation = startLocations[random.randrange(0, len(startLocations))]
+        if self.arena.locationType(startLocation.x, startLocation.y) != LocationType.START:
             raise Exception()
-        self.agent.move(startLocation, self.arena)
+        self.agent.move(startLocation, self.arena, envInitMoves)

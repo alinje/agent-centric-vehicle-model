@@ -4,7 +4,7 @@ from tulip.dumpsmach import write_python_case
 from synthesisation.overlapSpaceSpec import overlapSpaceSpec
 
 
-def synthesiseVehicleController(outputPath='model\\synthesisation\\output\\overlapControl', className='OverlapControl'):
+def synthesiseVehicleController(outputPath='mod\\model\\synthesisation\\output\\overlapControl', className='OverlapControl'):
 
     spec = overlapSpaceSpec()
     spec.moore = False
@@ -13,8 +13,8 @@ def synthesiseVehicleController(outputPath='model\\synthesisation\\output\\overl
     ctrl = synthesize(spec)
     assert ctrl is not None, 'specification is unrealizable'
     
-    if not ctrl.save(filename=f'{outputPath}.png'):
-        print('could not save as dot')
+    if not ctrl.save(filename=f'{outputPath}.scxml'):
+        print('could not save as scxml')
 
     write_python_case(f'{outputPath}.py', ctrl, classname=className)
 
