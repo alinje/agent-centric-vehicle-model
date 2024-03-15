@@ -1,10 +1,10 @@
 from tulip.synth import synthesize
 from tulip.dumpsmach import write_python_case
 
-from synthesisation.overlapSpaceSpec import overlapSpaceSpec
+from synthesisation.extOverlapSpaceSpec import overlapSpaceSpec
 
 
-def synthesiseVehicleController(outputPath='mod\\model\\synthesisation\\output\\overlapControl', className='OverlapControl'):
+def synthesiseVehicleController(outputPath='mod\\model\\synthesisation\\output\\extOverlapControl', className='OverlapControl'):
 
     spec = overlapSpaceSpec()
     spec.moore = False

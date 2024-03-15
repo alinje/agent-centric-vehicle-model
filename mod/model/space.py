@@ -79,7 +79,19 @@ class OverlapZoneType(Enum):
     AA = 4
     RF = 5
     RB = 6
-class OverlapZone(object):
+
+class ExtOverlapZoneType(Enum):
+    LF = 1
+    LFF = 2
+    LB = 3
+    AF = 4
+    # AFF = 5
+    AA = 6
+    RF = 7
+    RRF = 8
+    RB = 9
+
+class Zone(ABC):
     def __init__(self, tp, locations):
         self.tp = tp
         self.locations = locations
@@ -99,7 +111,7 @@ class OverlapZone(object):
                 loc.occ = LocationType.AGENT
             else:
                 loc.occ = LocationType.VISITED
-    
+
     def sensorAdjust(self, sensorOccupation) -> None:
         if sensorOccupation == LocationType.OBSTACLE and self.occupied() != LocationType.OFFROAD:
             for loc in self.locations:
@@ -109,6 +121,162 @@ class OverlapZone(object):
             for loc in self.locations:
                 if loc.occ == LocationType.ROAD:
                     loc.occ = LocationType.CLEARED_ROAD
+
+class ExtOverlapZone(Zone):
+    def __init__(self, tp, locations):
+        self.tp = tp
+        self.locations = locations
+
+    def __str__(self):
+        return OverlapZone.overlapZoneString(self.tp)
+
+    @staticmethod
+    def overlapZoneString(zone): 
+        dic = {
+            ExtOverlapZoneType.LF: 'lf',
+            ExtOverlapZoneType.LFF: 'lff',
+            ExtOverlapZoneType.LB: 'lb',
+            ExtOverlapZoneType.AF: 'f',
+            ExtOverlapZoneType.AA: 'a',
+            ExtOverlapZoneType.RF: 'rf',
+            ExtOverlapZoneType.RRF: 'rrf',
+            ExtOverlapZoneType.RB: 'rb',
+        }
+        return dic[zone]
+    
+    @staticmethod
+    def obstaclesDict():
+        # TODO stop signal
+        dic = {
+            ExtOverlapZoneType.LF: ['none', 'present'],
+            ExtOverlapZoneType.LFF: ['none', 'static', 'l_approaching', 'pl_approaching'],
+            ExtOverlapZoneType.LB: ['none', 'l_approaching'],
+            ExtOverlapZoneType.AF: ['none', 'present'],
+            ExtOverlapZoneType.AA: ['none', 'present'],
+            ExtOverlapZoneType.RF: ['none', 'present'],
+            ExtOverlapZoneType.RRF: ['none', 'pl_approaching'],
+            ExtOverlapZoneType.RB: ['none', 'present'],
+
+        }
+        return dic
+
+    @staticmethod
+    def leftForwardBlocked():
+        return '(lf = "present" || lff = "l_approaching")'
+        
+    @staticmethod
+    def forwardBlocked():
+        return '(f = "present" || lff = "pl_approaching" || rrf = "pl_approaching")'
+        
+    @staticmethod
+    def rightForwardBlocked():
+        return '(rf = "present" || rrf = "pl_approaching")'
+    
+    @staticmethod
+    def pathExists():
+        return f'! ({ExtOverlapZone.leftForwardBlocked()} && {ExtOverlapZone.forwardBlocked()} && {ExtOverlapZone.rightForwardBlocked()})'
+    
+    @staticmethod
+    def pathCanExist():
+        return f'! (lf = "present" && f = "present" && rf = "present")'
+
+    @staticmethod
+    def pathProgression():
+        return 'move != "halt"'
+
+    @staticmethod
+    def forwardRemaining():
+        return ['lff', 'lf', 'f', 'rf']
+
+    @staticmethod
+    def leftForwardRemaining():    
+        return ['lff', 'lf', 'f', 'a']
+    
+    @staticmethod
+    def rightForwardRemaining():
+        return ['f', 'a', 'rf', 'rrf']
+    
+    @staticmethod
+    def leftForwardObstaclesTransitions():
+        trans = [
+            'lff = "static" <-> X (f = "present")',
+            'lff = "l_approaching" <-> X (a = "present" || f = "present")',
+            'lff = "pl_approaching" <-> X (a = "present" || f = "present" || rf = "present")',
+            'lf = "present" <-> X (a = "present")',
+            'f = "present" <-> X (rf = "present")', # TODO can have driven out
+            'a = "present" <-> X (rb = "present")',
+        ]
+        return trans
+
+    @staticmethod
+    def forwardObstaclesTransitions():
+        trans = [
+            'lff = "static" <-> X (lf = "present")', 
+            'lff = "l_approaching" <-> X (lff = "l_approaching" || lf = "present")', # regard high speed where it is in 
+            'lff = "pl_approaching" <-> X (lff = "pl_approaching" || f = "present")',
+            # 'lf = present <-> X ()', no guarantees
+            'f = "present" <-> X (a = "present")', 
+            'rf = "present" <-> X (rf = "present" || rb = "present" || f = "present")'
+        ]
+        return trans
+    
+    @staticmethod
+    def rightForwardObstaclesTransitions():
+        trans = [
+            'f = "present" <-> X (lf = "present")',
+            # 'a = present <-> X ()',
+            'rf = "present" <-> X (a = "present")',
+            'rrf = "pl_approaching" <-> X (rrf = "pl_approaching" || rf = "present")',
+        ]
+        return trans
+
+    @staticmethod
+    def haltObstaclesTransitions():
+        trans = [
+            # 'lf = present <-> X (lff = static || lf = present || lb)'
+            'lff = "static" <-> X (lff = "static")',
+            'lff = "l_approaching" <-> X (lf = "present")',
+            # 'lff = pl_approaching <-> X ()'
+            'lb = "l_approaching" <-> X (lf = "present")',
+            'a = "present" <-> X (a = "present")',
+            # 'rrf = pl_approaching <-> X ()'
+
+
+        ]
+        return trans
+
+    # @staticmethod
+    # def forwardMove(loc):
+    #     if 'f' == loc:
+    #         return 'a'
+    #     if 'lff' == loc:
+    #         return loc.replace('f', '', 1)
+    #     return loc.replace('f', 'b')
+    
+    # @staticmethod
+    # def leftForwardMove(loc):
+    #     if 'a' == loc:
+    #         return 'rb'
+    #     if 'f' == loc:
+    #         return 'rf'
+    #     return 'a'
+    
+    # @staticmethod
+    # def rightForwardMove(loc):
+    #     if 'a' == loc:
+    #         return 'lb'
+    #     if 'f' == loc:
+    #         return 'lf'
+    #     return 'a'
+
+    def toAbsolute(self, absoluteStartingPoint, orientation, arena):
+        absZone = AbsoluteZone([self.locations])
+        return absZone
+    
+class OverlapZone(Zone):
+    def __init__(self, tp, locations):
+        self.tp = tp
+        self.locations = locations
 
     def __str__(self):
         return OverlapZone.overlapZoneString(self.tp)
