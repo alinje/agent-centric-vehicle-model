@@ -161,28 +161,88 @@ class ExtOverlapZone(Zone):
         return dic
 
     @staticmethod
-    def leftForwardBlocked():
-        return '(lf = "present" || lff = "l_approaching")'
+    def leftForwardPossiblyBlocked():
+        return '(olf || olff || olb)'
         
     @staticmethod
-    def forwardBlocked():
-        return '(f = "present" || lff = "pl_approaching" || rrf = "pl_approaching")'
+    def forwardPossiblyBlocked():
+        return '(of)'
         
     @staticmethod
-    def rightForwardBlocked():
-        return '(rf = "present" || rrf = "pl_approaching")'
+    def rightForwardPossiblyBlocked():
+        return '(orf || orb)'
     
     @staticmethod
-    def pathExists():
-        return f'! ({ExtOverlapZone.leftForwardBlocked()} && {ExtOverlapZone.forwardBlocked()} && {ExtOverlapZone.rightForwardBlocked()})'
+    def pathExistsGuaranteed():
+        return f'(! ({ExtOverlapZone.leftForwardPossiblyBlocked()} && {ExtOverlapZone.forwardPossiblyBlocked()} && {ExtOverlapZone.rightForwardPossiblyBlocked()}))'
     
+    @staticmethod
+    def leftForwardBlockedNextStatic():
+        # return '((X olf) || (olff && (X (! olff && ! (olb || of || orf || orrf)))) || (orrf && (X orf || X of)))'
+        return '(X olf)'
+
+    @staticmethod
+    def forwardBlockedNextStatic():
+        return '((X of) || (orrf || (X orf)))'
+    
+    @staticmethod
+    def rightForwardBlockedNextStatic():
+        return '((X orf) || (! orrf && X orrf))'
+        
+    @staticmethod
+    def leftForwardBlockedNextShiftLeftForward():
+        return '(X olf || (of && X of))'
+        
+    @staticmethod
+    def forwardBlockedNextShiftLeftForward():
+        return '(X of)'
+
+    # TODO fix from here    
+    @staticmethod
+    def rightForwardBlockedNextShiftLeftForward():
+        return '(X orf)'
+        
+    @staticmethod
+    def leftForwardBlockedNextForward():
+        return '(X olf)'
+    
+    @staticmethod
+    def forwardBlockedNextForward():
+        return '(X of)'
+        
+    @staticmethod
+    def rightForwardBlockedNextForward():
+        return '(X orf)'
+    
+    @staticmethod
+    def leftForwardBlockedNextShiftRightForward():
+        return '(X olf)'
+        
+    @staticmethod
+    def forwardBlockedNextShiftRightForward():
+        return '(X of)'
+    
+    @staticmethod
+    def rightForwardBlockedNextShiftRightForward():
+        return '(X orf)'
+    
+    @staticmethod
+    def pathExistsNext():
+        haltOpt =  f'(move = "halt" && ! ({ExtOverlapZone.leftForwardBlockedNextStatic()} && {ExtOverlapZone.forwardBlockedNextStatic()} && {ExtOverlapZone.rightForwardBlockedNextStatic()}))'
+        leftForwardShiftOpt =  f'(move = "shift_left_forward" && ! ({ExtOverlapZone.leftForwardBlockedNextShiftLeftForward()} && {ExtOverlapZone.forwardBlockedNextShiftLeftForward()} && {ExtOverlapZone.rightForwardBlockedNextShiftLeftForward()}))'
+        forwardShiftOpt =  f'(move = "forward" && ! ({ExtOverlapZone.leftForwardBlockedNextForward()} && {ExtOverlapZone.forwardBlockedNextForward()} && {ExtOverlapZone.rightForwardBlockedNextForward()}))'
+        rightForwardShiftOpt =  f'(move = "shift_right_forward" && ! ({ExtOverlapZone.leftForwardBlockedNextShiftRightForward()} && {ExtOverlapZone.forwardBlockedNextShiftRightForward()} && {ExtOverlapZone.rightForwardBlockedNextShiftRightForward()}))'
+        return f'({haltOpt} || {leftForwardShiftOpt} || {forwardShiftOpt} || {rightForwardShiftOpt})'
+
     @staticmethod
     def pathCanExist():
-        return f'! (lf = "present" && f = "present" && rf = "present")'
+        # BUG this idea is based on a longer safety distance for environment vehicles than for self
+        # return '! ((olf && X olf) && (of && X of) && (orf && X orf))'
+        return '! (olf && of && orf && ((X olf) && (X of) && (X orf)))'
 
     @staticmethod
     def pathProgression():
-        return 'move != "halt"'
+        return '(move != "halt")'
 
     @staticmethod
     def forwardRemaining():
@@ -199,49 +259,40 @@ class ExtOverlapZone(Zone):
     @staticmethod
     def leftForwardObstaclesTransitions():
         trans = [
-            'lff = "static" <-> X (f = "present")',
-            'lff = "l_approaching" <-> X (a = "present" || f = "present")',
-            'lff = "pl_approaching" <-> X (a = "present" || f = "present" || rf = "present")',
-            'lf = "present" <-> X (a = "present")',
-            'f = "present" <-> X (rf = "present")', # TODO can have driven out
-            'a = "present" <-> X (rb = "present")',
+            '(olf -> X oa)',
+            '(oa -> X orb)',
+
+            '((X oa) -> (olf || olb || olff))',
+            # '((X X oa) -> True)'
         ]
         return trans
 
     @staticmethod
     def forwardObstaclesTransitions():
         trans = [
-            'lff = "static" <-> X (lf = "present")', 
-            'lff = "l_approaching" <-> X (lff = "l_approaching" || lf = "present")', # regard high speed where it is in 
-            'lff = "pl_approaching" <-> X (lff = "pl_approaching" || f = "present")',
-            # 'lf = present <-> X ()', no guarantees
-            'f = "present" <-> X (a = "present")', 
-            'rf = "present" <-> X (rf = "present" || rb = "present" || f = "present")'
+            '(of <-> X oa)', # QUE honest movement here? does not really matter
+            '(olff -> X (olff || olf || olb))', # left lane vehicle lateral movement
+            # '((X oa) -> of)',
+            # '((X oa) -> (of || orf || orrf))',
         ]
         return trans
     
     @staticmethod
     def rightForwardObstaclesTransitions():
         trans = [
-            'f = "present" <-> X (lf = "present")',
-            # 'a = present <-> X ()',
-            'rf = "present" <-> X (a = "present")',
-            'rrf = "pl_approaching" <-> X (rrf = "pl_approaching" || rf = "present")',
+            '(orf -> X oa)',
+            '(of -> X (olf || olff))',
+            '(oa -> X olb)',
+
+            '((X oa) -> (orb || orf))',
         ]
         return trans
 
     @staticmethod
     def haltObstaclesTransitions():
         trans = [
-            '(lf = "present" -> X (lff = "none" || lf = "present" || lb = "none" || f =  || rf = "none"))',
-            # 'lff = "static" <-> X (lff = "static")',
-            # 'lff = "l_approaching" -> X (lff = "l_approaching" || lf = "present")',
-            # 'lff = "pl_approaching" -> X (lff = "pl_approaching" || f = "present")',
-            # 'lb = "l_approaching" -> X (lf = "present")',
-            '(a = "present" <-> X (a = "present"))',
-            # 'rrf = pl_approaching <-> X ()'
-
-
+            '(oa <-> (X oa))',
+            '(olf -> X (olff || olf || olb))',
         ]
         return trans
 

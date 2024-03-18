@@ -3,7 +3,7 @@ from space import ExtOverlapZone as l
 from space import ExtOverlapZoneType as zt
 
 def overlapSpaceSpec() -> GRSpec:
-    env_vars = {l.overlapZoneString(k): v for k, v in l.obstaclesDict().items()}
+    env_vars = {f'o{l.overlapZoneString(k)}': 'boolean' for k, v in l.obstaclesDict().items()}
 
     
     sys_vars = {
@@ -21,33 +21,34 @@ def overlapSpaceSpec() -> GRSpec:
 
     env_init = {
         # does not start in an obstacle
-        'a != "present"',
+        '! oa',
         # nor with no possible opening
-        l.pathCanExist(),
+        # l.pathCanExist(),
     }
 
     sys_init = {}
 
     # obstacles moving in unison
     env_safe = {
-        f'move = "shift_left_forward" -> ({' && '.join(l.leftForwardObstaclesTransitions())})',
-        f'move = "forward" -> ({' && '.join(l.forwardObstaclesTransitions())})',
-        f'move = "shift_right_forward" -> ({' && '.join(l.rightForwardObstaclesTransitions())})',
-        f'move = "halt" -> ({' && '.join(l.haltObstaclesTransitions())})',
+        f'(move = "shift_left_forward") -> ({' && '.join(l.leftForwardObstaclesTransitions())})',
+        f'(move = "forward") -> ({' && '.join(l.forwardObstaclesTransitions())})',
+        f'(move = "shift_right_forward") -> ({' && '.join(l.rightForwardObstaclesTransitions())})',
+        f'(move = "halt") -> ({' && '.join(l.haltObstaclesTransitions())})',
 
-        l.pathCanExist(),
+        # l.pathCanExist(),
 
         # TODO dif env obs should not melt together
     }
 
     sys_safe = {
         # no collision
-        'a != "present"',
+        '! oa',
 
         # only move left if nec
         # f'({l.rightForwardBlocked()} && {l.forwardBlocked()} && ! {l.leftForwardBlocked()}) -> move = "shift_left_forward"',
 
         # move right if pos
+        # '(! (move = "shift_right_forward" -> X oa)) -> move = "shift_right_forward"'
         # f'(! {l.rightForwardBlocked()}) -> move = "shift_right_forward"',
 
         # otherwise move left
@@ -56,11 +57,12 @@ def overlapSpaceSpec() -> GRSpec:
 
     env_prog = {
         # inf often a path will exist
-        l.pathExists(),
+        # l.pathExistsNext(),
+        l.pathExistsGuaranteed(),
     }
     sys_prog = {
         # inf often we will progress towards the goal
-        # l.pathProgression(),
+        l.pathProgression(),
     }
 
     spec = GRSpec(env_vars, sys_vars, env_init, sys_init,
