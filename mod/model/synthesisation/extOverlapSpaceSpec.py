@@ -45,13 +45,13 @@ def overlapSpaceSpec() -> GRSpec:
         'a != "present"',
 
         # only move left if nec
-        f'({l.rightForwardBlocked()} && {l.forwardBlocked()} && ! {l.leftForwardBlocked()}) -> move = "shift_left_forward"',
+        # f'({l.rightForwardBlocked()} && {l.forwardBlocked()} && ! {l.leftForwardBlocked()}) -> move = "shift_left_forward"',
 
         # move right if pos
-        f'(! {l.rightForwardBlocked()}) -> move = "shift_right_forward"',
+        # f'(! {l.rightForwardBlocked()}) -> move = "shift_right_forward"',
 
         # otherwise move left
-        f'({l.rightForwardBlocked()} && (! {l.forwardBlocked()})) -> move = "forward"',
+        # f'({l.rightForwardBlocked()} && (! {l.forwardBlocked()})) -> move = "forward"',
     }
 
     env_prog = {
@@ -60,7 +60,7 @@ def overlapSpaceSpec() -> GRSpec:
     }
     sys_prog = {
         # inf often we will progress towards the goal
-        l.pathProgression(),
+        # l.pathProgression(),
     }
 
     spec = GRSpec(env_vars, sys_vars, env_init, sys_init,

@@ -1,6 +1,6 @@
 from appControl.appControl import showGraphicView
-from model.synthesisation.output.overlapControl import OverlapControl
+from model.synthesisation.output.extOverlapControl import OverlapControl
 
 # TODO synthesise of args
 if __name__ == '__main__':
-    showGraphicView('./../maps/partStraightO3.txt', OverlapControl())
+    showGraphicView('./../maps/partStraightNO.txt','./model/synthesisation/output/extOverlapControl.scxml',  OverlapControl())

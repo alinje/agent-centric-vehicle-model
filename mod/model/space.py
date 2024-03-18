@@ -233,12 +233,12 @@ class ExtOverlapZone(Zone):
     @staticmethod
     def haltObstaclesTransitions():
         trans = [
-            # 'lf = present <-> X (lff = static || lf = present || lb)'
-            'lff = "static" <-> X (lff = "static")',
-            'lff = "l_approaching" <-> X (lf = "present")',
-            # 'lff = pl_approaching <-> X ()'
-            'lb = "l_approaching" <-> X (lf = "present")',
-            'a = "present" <-> X (a = "present")',
+            '(lf = "present" -> X (lff = "none" || lf = "present" || lb = "none" || f =  || rf = "none"))',
+            # 'lff = "static" <-> X (lff = "static")',
+            # 'lff = "l_approaching" -> X (lff = "l_approaching" || lf = "present")',
+            # 'lff = "pl_approaching" -> X (lff = "pl_approaching" || f = "present")',
+            # 'lb = "l_approaching" -> X (lf = "present")',
+            '(a = "present" <-> X (a = "present"))',
             # 'rrf = pl_approaching <-> X ()'
 
 
