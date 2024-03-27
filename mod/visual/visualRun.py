@@ -1,10 +1,12 @@
-
+from __future__ import annotations
 from abc import ABC
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtGui import QPalette, QColor, QPixmap
 from appControl.exceptions import ControllerException, MapException
 
-from model.space import LocationType, OverlapZoneType, absolute2Relative
+from model.space.extOverlapSpace import ExtOverlapZoneSensedArea, ExtOverlapZoneType
+from model.space.overlapSpace import OverlapZoneType
+from model.space.spaceBasics import LocationType
 
 
 class VehiclePane(QtWidgets.QWidget):
@@ -14,7 +16,7 @@ class VehiclePane(QtWidgets.QWidget):
         self.nextStateHandler = nextStateHandler
 
         self.windowTitle = 'yodeli'
-        self.paneTxt = QtWidgets.QLabel("", alignment=QtCore.Qt.AlignCenter)
+        self.paneTxt = QtWidgets.QLabel("timestep 0", alignment=QtCore.Qt.AlignCenter)
         self.arenaPane = self.createArenaPane(self.arena, initSensorArea, 100, 800)
         self.sensorPane, wrapSensorAreaPane = self.createSensorAreaPane(initSensorArea, 150, 200)
         self.toolBar = self.createToolBar()
@@ -22,7 +24,9 @@ class VehiclePane(QtWidgets.QWidget):
         self.layout = QtWidgets.QGridLayout(self)
         self.layout.addWidget(self.arenaPane, 0, 0, 1, 2)
         self.layout.addWidget(wrapSensorAreaPane, 1, 0, 1, 1)
-        self.layout.addWidget(self.paneTxt, 1, 1, 1, 1)
+        self.layout.addWidget(self.paneTxt, 1, 1, 1, 1) 
+        # TODO custom sensor area selection
+        # TODO dump current run
         self.layout.addWidget(self.toolBar, 2, 0, 1, 2)
         self.layout.setRowStretch(0, 10)
         self.layout.setRowStretch(1, 10)
@@ -68,10 +72,6 @@ class VehiclePane(QtWidgets.QWidget):
         layout.setHorizontalSpacing(0)
         layout.rowCount=arenaH
         layout.columnCount=arenaW
-        # for i in range(0, layout.columnCount):
-        #     layout.setColumnMinimumWidth(i, w/arenaW)
-        # for i in range(0, layout.rowCount):
-        #     layout.setRowMinimumHeight(i, h/arenaH)
 
 
         for loc in initArena.locations.values():
@@ -139,16 +139,37 @@ class VehiclePane(QtWidgets.QWidget):
 
         self.zoneDict = {k: v[0] for k, v in zoneDict.items()}
 
+    def createExtOverlapSensorArea(self, layout: QtWidgets.QGridLayout, initSensorArea: ExtOverlapZoneSensedArea):
+        layout.rowCount=6
+        layout.columnCount=4
+        layout.setVerticalSpacing(2)
+        layout.setHorizontalSpacing(2)
 
+        # create the individual colored cards
+        zoneDict = {
+            ExtOverlapZoneType.LFF:  (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.LFF]), 0, 0, 2, 1),
+            ExtOverlapZoneType.LF:   (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.LF]),  2, 0, 2, 1),
+            ExtOverlapZoneType.LB:   (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.LB]),  4, 0, 2, 1),
+            ExtOverlapZoneType.AF:   (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.AF]),  1, 1, 2, 1),
+            ExtOverlapZoneType.AA:   (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.AA]),  3, 1, 2, 1),
+            ExtOverlapZoneType.RF:   (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.RF]),  2, 2, 2, 1),
+            ExtOverlapZoneType.RF_P: (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.RF_P]), 1, 3, 1, 1),
+        }
+
+        for [p, py, px, ph, pw] in zoneDict.values():
+            layout.addWidget(p, py, px, ph, pw)
+        rfpLocs = initSensorArea.zoneLayout[ExtOverlapZoneType.RF_P]
+        rfpLocStr = f'Custom sensor zone at [{', '.join([f'p{loc[0]}l{loc[1]}' for loc in rfpLocs])}]'
+        layout.addWidget(QtWidgets.QLabel(rfpLocStr), 0, 3, 1, 1)
+
+        self.zoneDict = {k: v[0] for k, v in zoneDict.items()}
         
 
     def createSensorAreaPane(self, initSensorArea, h, w):
         widget = QtWidgets.QWidget()
         layout = QtWidgets.QGridLayout()
         widget.setLayout(layout)
-        #widget.setFixedHeight(150)
-        #widget.setFixedWidth(200)
-        self.createOverlapSensorArea(layout, initSensorArea, h, w)
+        self.createExtOverlapSensorArea(layout, initSensorArea)
         
 
         # a wrapper that gives context to the sensor map
@@ -173,6 +194,7 @@ class VehiclePane(QtWidgets.QWidget):
     @QtCore.Slot()
     def nextState(self):
         self.toolBarNextBut.setEnabled(False)
+        self.toolBarNextBut.setText('dont click pls')
         # prompt new state from model
 
         # remove agent mark from arena pane
@@ -181,7 +203,7 @@ class VehiclePane(QtWidgets.QWidget):
 
 
         try:
-            agent = self.nextStateHandler()
+            task = self.nextStateHandler()
         except ControllerException as e:
             print(e)
             self.toolBarInfoLabel.setText('No plan for current environment state')
@@ -197,7 +219,7 @@ class VehiclePane(QtWidgets.QWidget):
         for tile in self.arenaPane.findChildren(QtWidgets.QFrame):
             tile.setProperty("highlighted", False)
 
-        for zone in agent.sensedArea.zones.values():
+        for zone in task.agent.sensedArea.zones.values():
             for loc in zone.locations:
                 tile = arenaLayout.itemAtPosition(loc.y, loc.x).widget()
                 tile.setProperty("highlighted", True)
@@ -209,9 +231,11 @@ class VehiclePane(QtWidgets.QWidget):
 
         # show new sensor pane
         for t, tile in self.zoneDict.items():
-            tile.changeColor(LocationType2Color(agent.sensedArea.zones[t].occupied()))
+            tile.changeColor(LocationType2Color(task.agent.sensedArea.zones[t].occupied()))
 
         self.toolBarNextBut.setEnabled(True)
+        self.toolBarNextBut.setText('>')
+        self.paneTxt.setText(f'timestep {task.time}')
 
 class ColoredPane(QtWidgets.QWidget):
     def __init__(self, color):
@@ -226,13 +250,12 @@ class ColoredPane(QtWidgets.QWidget):
         palette.setColor(QPalette.ColorRole.Window, color)
         self.setPalette(palette)
 
-def ColoredFrame(color):
-    
-    tile = QtWidgets.QFrame()
-    tile.setStyleSheet(f'background-color: {LocationType2Color(loc.occ).name()}')
-
-
-
+    @staticmethod
+    def zonePane(zone) -> ColoredPane:
+        color = LocationType2Color(zone.occupied())
+        pane = ColoredPane(color)
+        pane.setToolTip(str(zone))
+        return pane
 
 
 class Observer(ABC):
@@ -246,7 +269,15 @@ class TaskObserver(Observer):
         pass
 
 
-        
+# extOverlapZoneType2Desc: dict[ExtOverlapZoneType, str] = {
+#     ExtOverlapZoneType.LFF:  '',
+#     ExtOverlapZoneType.LF:   '',
+#     ExtOverlapZoneType.LB:   '',
+#     ExtOverlapZoneType.AF:   '',
+#     ExtOverlapZoneType.AA:   'Agent',
+#     ExtOverlapZoneType.RF:   '',
+#     ExtOverlapZoneType.RF_P: '',
+# }        
 
 def LocationType2Color(tp) -> QColor:
     if tp == LocationType.ROAD:

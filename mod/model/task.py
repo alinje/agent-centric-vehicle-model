@@ -1,33 +1,8 @@
 from abc import ABC
-from enum import Enum
 import random
 
-from model.space import AbsoluteLocation, LocationType, Orientation, OverlapZoneType, SensedArea, changesPerpendicularLateral, relative2Absolute
+from model.space.spaceBasics import AbsoluteLocation, Action, Arena, LocationType, Orientation, SensedArea, changesPerpendicularLateral, relativeAction
 
-class Action(Enum):
-    MLF = 1
-    MF = 2
-    MRF = 3
-
-relativeAction = {}
-relativeAction[Action.MLF] = (-1, 1)
-relativeAction[Action.MF] = (0, 2)
-relativeAction[Action.MRF] = (1, 1)
-
-introducedCoords = {}
-introducedCoords[Action.MF] = [OverlapZoneType.LF, OverlapZoneType.AF, OverlapZoneType.RF]
-introducedCoords[Action.MLF] = [OverlapZoneType.LF, OverlapZoneType.LB, OverlapZoneType.AF]
-introducedCoords[Action.MRF] = [OverlapZoneType.RF, OverlapZoneType.RB, OverlapZoneType.AF]
-
-removedCoords = {}
-removedCoords[Action.MF] = [OverlapZoneType.LB, OverlapZoneType.AA, OverlapZoneType.RB]
-removedCoords[Action.MLF] = [OverlapZoneType.LB, OverlapZoneType.RF, OverlapZoneType.RB]
-removedCoords[Action.MRF] = [OverlapZoneType.LF, OverlapZoneType.LB, OverlapZoneType.RB]
-
-
-# relativeSensorArea = [(-2,2), (-1, 2), (0, 2), (1, 2), (2, 2), (-1, 1), (0, 1), (1, 1), (-1, 0), (0, 0), (1, 0)]
-
-#########################3
 
 class SpaceOccupying(ABC):
     pass
@@ -49,7 +24,7 @@ class Agent(SpaceOccupying):
 
         self.sensedArea.markMove(True)
 
-    def applyAction(self, action, arena, envNextMoves):
+    def applyAction(self, action: Action, arena: Arena, envNextMoves) -> None:
         locChange = changesPerpendicularLateral(self.orientation, relativeAction[action])
         newLoc = arena.locations[(self.curLoc.x+locChange[0], self.curLoc.y+locChange[1])]
         self.sensedArea.markMove(False)
@@ -65,12 +40,12 @@ class Task(object):
         agent (Agent): Agent of the task.
         arena (Arena): Arena of the task.
         completed (bool): Whether the task is completed.
+        time (int): How many transitions that have been made.
     """
-    def __init__(self, arena):
+    def __init__(self, arena: Arena, sensedArea: SensedArea) -> None:
         self.arena = arena
-
-        self.agent = Agent(None, Orientation.EAST, SensedArea({}))
-
+        self.agent = Agent(None, Orientation.EAST, sensedArea)
+        self.time = 0
        
 
     def start(self, envInitMoves, startLocation: AbsoluteLocation=None) -> None:
@@ -80,3 +55,7 @@ class Task(object):
         if self.arena.locationType(startLocation.x, startLocation.y) != LocationType.START:
             raise Exception()
         self.agent.move(startLocation, self.arena, envInitMoves)
+
+    def applyAction(self, action: Action, arena: Arena, envNextMoves) -> None:
+        self.time += 1
+        self.agent.applyAction(action, arena, envNextMoves)

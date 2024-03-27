@@ -2,7 +2,8 @@
 import sys
 from appControl.exceptions import MapException
 from model.runner.controller import Control
-from model.space import Arena, MapLocation, LocationType
+from model.space.extOverlapSpace import ExtOverlapZoneSensedArea, ExtOverlapZoneType
+from model.space.spaceBasics import Arena, MapLocation, LocationType
 from model.task import Task
 from visual.visualRun import VehiclePane
 from PySide6.QtWidgets import QApplication
@@ -17,7 +18,10 @@ def showGraphicView(mapFileName, scxmlFileName, controller):
         controllerFileName (string): Path to file representing a controller."""
     arena = map2Arena(mapFileName)
     transMap = scxml2dict(scxmlFileName)
-    task = Task(arena)
+    sensedArea = ExtOverlapZoneSensedArea({
+        ExtOverlapZoneType.RF_P: [], # no cars may cross from right on this map type
+    })
+    task = Task(arena, sensedArea)
     control = Control(controller, task, transMap)
     handler = control.next
     
@@ -56,7 +60,7 @@ def char2LocationType(char):
     raise MapException('Input map contains nonsensical markings: {0}'.format(char))
 
 
-def scxml2dict(scxmlFileName):
+def scxml2dict(scxmlFileName) -> dict[str,]:
     file = open(scxmlFileName, "r")
     read = file.readlines()
     graph = read[2:]

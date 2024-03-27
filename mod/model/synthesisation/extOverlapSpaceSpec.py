@@ -1,9 +1,8 @@
 from tulip.spec import GRSpec
-from space import ExtOverlapZone as l
-from space import ExtOverlapZoneType as zt
+from model.space.extOverlapSpace import ExtOverlapZone as l
 
 def overlapSpaceSpec() -> GRSpec:
-    env_vars = {f'o{l.overlapZoneString(k)}': 'boolean' for k, v in l.obstaclesDict().items()}
+    env_vars = {f'o{l.zoneString[k]}': v for k, v in l.obstaclesDict().items()}
 
     
     sys_vars = {
@@ -13,17 +12,11 @@ def overlapSpaceSpec() -> GRSpec:
             'forward',
             'shift_right_forward',
         ],
-        # 'mh': 'boolean', # brake
-        # 'mlf': 'boolean', 
-        # 'mf': 'boolean',
-        # 'mrf': 'boolean',
     }
 
     env_init = {
         # does not start in an obstacle
         '! oa',
-        # nor with no possible opening
-        # l.pathCanExist(),
     }
 
     sys_init = {}
@@ -34,30 +27,17 @@ def overlapSpaceSpec() -> GRSpec:
         f'(move = "forward") -> ({' && '.join(l.forwardObstaclesTransitions())})',
         f'(move = "shift_right_forward") -> ({' && '.join(l.rightForwardObstaclesTransitions())})',
         f'(move = "halt") -> ({' && '.join(l.haltObstaclesTransitions())})',
-
-        # l.pathCanExist(),
-
-        # TODO dif env obs should not melt together
     }
 
     sys_safe = {
         # no collision
         '! oa',
-
-        # only move left if nec
-        # f'({l.rightForwardBlocked()} && {l.forwardBlocked()} && ! {l.leftForwardBlocked()}) -> move = "shift_left_forward"',
-
-        # move right if pos
-        # '(! (move = "shift_right_forward" -> X oa)) -> move = "shift_right_forward"'
-        # f'(! {l.rightForwardBlocked()}) -> move = "shift_right_forward"',
-
-        # otherwise move left
-        # f'({l.rightForwardBlocked()} && (! {l.forwardBlocked()})) -> move = "forward"',
+        # moves if possible
+        f'{l.pathExistsGuaranteed()} -> ! (move = "halt")',
     }
 
     env_prog = {
         # inf often a path will exist
-        # l.pathExistsNext(),
         l.pathExistsGuaranteed(),
     }
     sys_prog = {

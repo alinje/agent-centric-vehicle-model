@@ -1,11 +1,9 @@
 from tulip.spec import GRSpec
-from space import OverlapZone as l
-from space import OverlapZoneType as zt
+from space.overlapSpace import OverlapZone as l
+from space.overlapSpace import OverlapZoneType as zt
 
 def overlapSpaceSpec():
-    env_vars = { 
-        ('o' + l.overlapZoneString(k)): 'boolean' for k in zt
-        }
+    env_vars = { ('o' + l.zoneString[k]): 'boolean' for k in zt }
     
     sys_vars = {
         'mlf': 'boolean', 
@@ -64,7 +62,6 @@ def overlapSpaceSpec():
         '(orf && of) <-> mlf',
     }
 
-    # NLVL moving obstacles: if appeared, will eventually ...
     env_prog = {}
     sys_prog = {}
 

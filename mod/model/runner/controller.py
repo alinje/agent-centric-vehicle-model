@@ -1,52 +1,59 @@
 from abc import ABC
-from appControl.exceptions import ControllerException
+from typing import Any
+from appControl.exceptions import ControllerException, SynthesisException
 
 
-from model.space import LocationType, OverlapZoneType, absolute2Relative
-from model.task import Action
+from model.space.spaceBasics import LocationType
+from model.task import Action, Agent, Task
 
 
 class Controller(ABC):
     """
     Super class to controllers
     """
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def move(self, *argv):
         pass
 
-    # def move(self, dict):
-    #     return self.move(dict['op_1l1'], dict['op0l1'], dict['op0l0'], dict['op0l2'], dict['op_1l2'], dict['op1l0'], dict['op1l1'], dict['op_2l2'], dict['op1l2'], dict['op2l2'], dict['op_1l0'])
-
-
 class Control(object):
-    """
-    Attributes:
-        controller (Controller): Transducer controller."""
-    def __init__(self, controller, task, transMap):
+    def __init__(self, controller, task: Task, transMap):
         self.controller = controller
         self.task = task
         self.transMap = transMap
-        self.task.start(envInitMoves=self.transMap["Sinit"])
+        self.envNextMoves = self.transMap["Sinit"]
+        self.task.start(envInitMoves=self.envNextMoves)
 
-    """
-    Returns:
-        (Agent)"""
-    def next(self):
-        inputs = sensorArea2inputs(self.task.agent.sensedArea, self.task.agent.orientation, self.task.agent.curLoc)
+
+
+    def next(self) -> Task:
+        inputs = sensorArea2inputs(self.task.agent.sensedArea)
         try:
             move = self.controller.move(**inputs)
         except ValueError as e:
-            raise ControllerException("Environment state is undefined in controller") from e
+            print(e)
+            raise ControllerException(f"Environment state {self.controller.state} is undefined in controller") from e
 
         # find possible next states
-        envNextMoves = self.transMap[str(self.controller.state)]
+        self.envNextMoves = self.transMap[str(self.controller.state)]
 
         # apply output to map
         act = output2ActionEnum(move)
-        self.task.agent.applyAction(act, self.task.arena, envNextMoves)
-        return self.task.agent
+        self.task.applyAction(act, self.task.arena, self.envNextMoves)
+        return self.task
+
+    # TODO move to sensor zone
+    @staticmethod
+    def moveEnsuredNext(state: dict[str, Any]) -> bool:
+        leftOpen = state['olf'] == 'false' and state['olff'] == 'false' and state['olb'] == 'false' and state['rfp'] == 'false'
+        frontOpen = state['of'] == 'false' and state['rfp'] == 'false'
+        rightOpen = state['orf'] == 'false' and state['rfp'] == 'false'
+        return leftOpen and frontOpen and rightOpen
+    # TODO
+    def nextMoveEnsuredNext(self) -> Agent:
+        envNextMoves = self.transMap[str(self.controller.state)]
+        list(filter(moveEnsuredNext, envNextMoves))
 
     def nextOptions(self):
         pass
@@ -54,20 +61,12 @@ class Control(object):
     def nextSpecified(self):
         pass
 
-    """
-    Input should be a sensor area with determined  
-    """
-    # def randSensedArea(self):
-    #     basis = self.task.agent.sensedArea
-    #     lastMove = self.task.agent.
-
     def randInitSensArea(self):
         pass
 
 
 
-def sensorArea2inputs(sensorArea, agentDir, curLoc):
-    # TODO to input vars
+def sensorArea2inputs(sensorArea) -> dict[str, Any]:
     inputs = {}
     for zt in sensorArea.zones:
         zone = sensorArea.zones[zt]
@@ -75,10 +74,14 @@ def sensorArea2inputs(sensorArea, agentDir, curLoc):
         inputs[k] = zone.occupied() == LocationType.OFFROAD or zone.occupied() == LocationType.OBSTACLE
     return inputs
 
-def output2ActionEnum(output):
-    if output['mf']:
+def output2ActionEnum(output: dict[str, Any]) -> Action:
+    move = output['move']
+    if move == 'forward':
         return Action.MF
-    if output['mlf']:
+    if move == 'shift_left_forward':
         return Action.MLF
-    if output['mrf']:
+    if move == 'shift_right_forward':
         return Action.MRF
+    if move == 'halt':
+        return Action.HALT
+    raise SynthesisException('Unknown output')

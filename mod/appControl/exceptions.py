@@ -3,3 +3,6 @@ class MapException(Exception):
 
 class ControllerException(Exception):
     pass
+
+class SynthesisException(Exception):
+    pass
