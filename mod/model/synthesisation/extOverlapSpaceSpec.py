@@ -21,25 +21,34 @@ def overlapSpaceSpec() -> GRSpec:
 
     sys_init = {}
 
-    # obstacles moving in unison
     env_safe = {
+        # obstacles moving in unison
         f'(move = "shift_left_forward") -> ({' && '.join(l.leftForwardObstaclesTransitions())})',
         f'(move = "forward") -> ({' && '.join(l.forwardObstaclesTransitions())})',
         f'(move = "shift_right_forward") -> ({' && '.join(l.rightForwardObstaclesTransitions())})',
         f'(move = "halt") -> ({' && '.join(l.haltObstaclesTransitions())})',
+
+        # moving obstacles can not merge
+        # '!(olff && olf)',
+        '!(olff && olb)',
+        '((move = "halt") && olff && olf) -> X (olf && (! olb))', # meeting two obstacles
+        '((move = "halt") && olb && olf) -> X (olf && (! olff))', # being passed by two obstacles
+        '((move = "forward") && olf && olb) -> X (olf && (! olff))',
+
+        # can not get locked in with offroad left and obstacles forward and right forward
+        '(olf && (! olff) && (! olb) && (move = "halt") && (X (olf && (! olff) && (! olb)))) -> (X (! of))', # TODO one might have to wait longer than to next round bf clear
+        # '!(olf && olb)',
+
     }
 
     sys_safe = {
         # no collision
         '! oa',
         # moves if possible
-        f'{l.pathExistsGuaranteed()} -> ! (move = "halt")',
+        f'{l.pathExistsGuaranteed()} -> (! (move = "halt"))',
     }
 
-    env_prog = {
-        # inf often a path will exist
-        l.pathExistsGuaranteed(),
-    }
+    env_prog = l.pathWillExist()
     sys_prog = {
         # inf often we will progress towards the goal
         l.pathProgression(),

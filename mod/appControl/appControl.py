@@ -87,4 +87,5 @@ def scxml2dict(scxmlFileName) -> dict[str,]:
 
         line = graph.pop(0)
         state2trans[stId] = trans
+    file.close()
     return state2trans

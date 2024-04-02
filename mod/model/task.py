@@ -41,11 +41,13 @@ class Task(object):
         arena (Arena): Arena of the task.
         completed (bool): Whether the task is completed.
         time (int): How many transitions that have been made.
+        history (list[Action]): All actions taken.
     """
-    def __init__(self, arena: Arena, sensedArea: SensedArea) -> None:
+    def __init__(self, arena: Arena, sensedArea: SensedArea, ) -> None:
         self.arena = arena
         self.agent = Agent(None, Orientation.EAST, sensedArea)
         self.time = 0
+        self.history: list[Action] = []
        
 
     def start(self, envInitMoves, startLocation: AbsoluteLocation=None) -> None:
@@ -59,3 +61,4 @@ class Task(object):
     def applyAction(self, action: Action, arena: Arena, envNextMoves) -> None:
         self.time += 1
         self.agent.applyAction(action, arena, envNextMoves)
+        self.history.append(action)

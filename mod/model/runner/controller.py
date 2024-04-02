@@ -3,7 +3,7 @@ from typing import Any
 from appControl.exceptions import ControllerException, SynthesisException
 
 
-from model.space.spaceBasics import LocationType
+from model.space.spaceBasics import LocationType, SensedArea
 from model.task import Action, Agent, Task
 
 
@@ -28,22 +28,24 @@ class Control(object):
 
 
     def next(self) -> Task:
-        inputs = sensorArea2inputs(self.task.agent.sensedArea)
+        inputs = self.task.agent.sensedArea.toInputs()
         try:
             move = self.controller.move(**inputs)
         except ValueError as e:
             print(e)
-            raise ControllerException(f"Environment state {self.controller.state} is undefined in controller") from e
+            raise ControllerException(f"Environment state {self.controller.state} has no such defined transition") from e
 
         # find possible next states
-        self.envNextMoves = self.transMap[str(self.controller.state)]
-
+        try:
+            self.envNextMoves = self.transMap[str(self.controller.state)]
+        except KeyError:
+            raise ControllerException(f'scxml and python controllers do not align')
         # apply output to map
         act = output2ActionEnum(move)
         self.task.applyAction(act, self.task.arena, self.envNextMoves)
         return self.task
 
-    # TODO move to sensor zone
+    # TODO no. implement as it trying until moves, and report back w actual amount of cycles it took
     @staticmethod
     def moveEnsuredNext(state: dict[str, Any]) -> bool:
         leftOpen = state['olf'] == 'false' and state['olff'] == 'false' and state['olb'] == 'false' and state['rfp'] == 'false'
@@ -64,15 +66,6 @@ class Control(object):
     def randInitSensArea(self):
         pass
 
-
-
-def sensorArea2inputs(sensorArea) -> dict[str, Any]:
-    inputs = {}
-    for zt in sensorArea.zones:
-        zone = sensorArea.zones[zt]
-        k = 'o' + str(zone)
-        inputs[k] = zone.occupied() == LocationType.OFFROAD or zone.occupied() == LocationType.OBSTACLE
-    return inputs
 
 def output2ActionEnum(output: dict[str, Any]) -> Action:
     move = output['move']

@@ -16,7 +16,7 @@ class VehiclePane(QtWidgets.QWidget):
         self.nextStateHandler = nextStateHandler
 
         self.windowTitle = 'yodeli'
-        self.paneTxt = QtWidgets.QLabel("timestep 0", alignment=QtCore.Qt.AlignCenter)
+        self.historyPane = self.createHistoryPane()
         self.arenaPane = self.createArenaPane(self.arena, initSensorArea, 100, 800)
         self.sensorPane, wrapSensorAreaPane = self.createSensorAreaPane(initSensorArea, 150, 200)
         self.toolBar = self.createToolBar()
@@ -24,7 +24,7 @@ class VehiclePane(QtWidgets.QWidget):
         self.layout = QtWidgets.QGridLayout(self)
         self.layout.addWidget(self.arenaPane, 0, 0, 1, 2)
         self.layout.addWidget(wrapSensorAreaPane, 1, 0, 1, 1)
-        self.layout.addWidget(self.paneTxt, 1, 1, 1, 1) 
+        self.layout.addWidget(self.historyPane, 1, 1, 1, 1) 
         # TODO custom sensor area selection
         # TODO dump current run
         self.layout.addWidget(self.toolBar, 2, 0, 1, 2)
@@ -59,6 +59,17 @@ class VehiclePane(QtWidgets.QWidget):
         widget.setLayout(layout)
         widget.setFixedHeight(40)
         widget.setObjectName("toolBar")
+        return widget
+    
+    def createHistoryPane(self):
+        layout = QtWidgets.QVBoxLayout()
+        self.paneTxt = QtWidgets.QLabel("timestep 0", alignment=QtCore.Qt.AlignTop)
+        layout.addWidget(self.paneTxt)
+
+        widget = QtWidgets.QWidget()
+        widget.setLayout(layout)
+        widget.setObjectName("historyPane")
+        widget.setFixedHeight(400)
         return widget
 
 
@@ -225,6 +236,11 @@ class VehiclePane(QtWidgets.QWidget):
                 tile.setProperty("highlighted", True)
                 tile.setStyleSheet(f'background-color: {LocationType2Color(loc.occ).name()}')
         
+        self.paneTxt.setText(f'timestep {task.time}')
+        newHistoryLog = QtWidgets.QLabel(str(task.history[-1]), alignment=QtCore.Qt.AlignTop)
+        historyLayout = self.historyPane.layout()
+        historyLayout.addWidget(newHistoryLog)
+
         # I don't know why this needs to be reloaded, but otherwise highlights won't update
         self.loadStyleSheet('visual\\style.qss')
 
@@ -235,7 +251,6 @@ class VehiclePane(QtWidgets.QWidget):
 
         self.toolBarNextBut.setEnabled(True)
         self.toolBarNextBut.setText('>')
-        self.paneTxt.setText(f'timestep {task.time}')
 
 class ColoredPane(QtWidgets.QWidget):
     def __init__(self, color):

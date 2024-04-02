@@ -101,15 +101,19 @@ class Zone(ABC):
             else:
                 loc.occ = LocationType.VISITED
 
-    def sensorAdjust(self, sensorOccupation) -> None:
+    def sensorAdjust(self, sensorOccupation) -> None: # TODO smth icky
         if sensorOccupation == LocationType.OBSTACLE and self.occupied() != LocationType.OFFROAD:
             for loc in self.locations:
-                if loc.occ == LocationType.ROAD:
+                # if loc.occ == LocationType.ROAD:
+                    # TODO ????
                     loc.occ = LocationType.OBSTACLE
         else:
             for loc in self.locations:
-                if loc.occ == LocationType.ROAD:
+                if loc.occ == LocationType.ROAD or loc.occ == LocationType.OBSTACLE:
                     loc.occ = LocationType.CLEARED_ROAD
+
+    def toInput(self) -> str:
+        pass
 
 
 
@@ -211,7 +215,7 @@ class SensedArea(ABC):
     
     Attributes:
         zones (dict of ExtOverlapZoneType: ExtOverlapZone)"""
-    def __init__(self, zones):
+    def __init__(self, zones: dict[Enum,Zone]):
         self.zones = zones
     def constructSensedArea(self, curLoc, curDir, arena, envNextMoves) -> None:
         pass
@@ -234,3 +238,6 @@ class SensedArea(ABC):
 
     def markMove(self, present):
         self.agentZone().markPath(present)
+    
+    def toInputs(self) -> dict[str,str]:
+        return { f'o{str(zone)}': zone.toInput() for zone in self.zones.values() }
