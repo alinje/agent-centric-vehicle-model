@@ -1,7 +1,7 @@
 from abc import ABC
 from enum import Enum
 import sys
-from typing import List
+from typing import Any, List
 
 
 class Action(Enum):
@@ -217,7 +217,7 @@ class SensedArea(ABC):
         zones (dict of ExtOverlapZoneType: ExtOverlapZone)"""
     def __init__(self, zones: dict[Enum,Zone]):
         self.zones = zones
-    def constructSensedArea(self, curLoc, curDir, arena, envNextMoves) -> None:
+    def constructSensedArea(self, curLoc, curDir, arena, envNextMoves: list[Any]) -> None:
         pass
 
     def applicableState(self, mapData, stateData):

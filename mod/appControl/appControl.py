@@ -1,5 +1,6 @@
 
 import sys
+from typing import Any
 from appControl.exceptions import MapException
 from model.runner.controller import Control
 from model.space.extOverlapSpace import ExtOverlapZoneSensedArea, ExtOverlapZoneType
@@ -60,7 +61,7 @@ def char2LocationType(char):
     raise MapException('Input map contains nonsensical markings: {0}'.format(char))
 
 
-def scxml2dict(scxmlFileName) -> dict[str,]:
+def scxml2dict(scxmlFileName) -> dict[str,list[Any]]:
     file = open(scxmlFileName, "r")
     read = file.readlines()
     graph = read[2:]

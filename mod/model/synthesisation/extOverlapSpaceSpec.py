@@ -29,14 +29,19 @@ def overlapSpaceSpec() -> GRSpec:
         f'(move = "halt") -> ({' && '.join(l.haltObstaclesTransitions())})',
 
         # moving obstacles can not merge
-        # '!(olff && olf)',
+        # not meeting and passing at the same time
         '!(olff && olb)',
-        '((move = "halt") && olff && olf) -> X (olf && (! olb))', # meeting two obstacles
-        '((move = "halt") && olb && olf) -> X (olf && (! olff))', # being passed by two obstacles
+        '((move = "halt" || move = "forward") && olff) -> X (! olb)',
+        '((move = "halt" || move = "forward") && olb) -> X (! olff)',
+        # meeting two obstacles
+        '((move = "halt") && olff && olf) -> X (olf && (! olb))', 
+        # being passed by two obstacles
+        '((move = "halt") && olb && olf) -> X (olf && (! olff))',
         '((move = "forward") && olf && olb) -> X (olf && (! olff))',
 
         # can not get locked in with offroad left and obstacles forward and right forward
-        '(olf && (! olff) && (! olb) && (move = "halt") && (X (olf && (! olff) && (! olb)))) -> (X (! of))', # TODO one might have to wait longer than to next round bf clear
+        '!(olf && (! olff) && (! olb) && of && orf)', 
+        # f'(olf && (! olff) && (! olb) && of && orf) -> (! (X {l.leftForwardPossiblyBlocked()}))', # TODO one might have to wait longer than to next round bf clear
         # '!(olf && olb)',
 
     }

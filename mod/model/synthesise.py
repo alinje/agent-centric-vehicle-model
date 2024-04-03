@@ -1,3 +1,6 @@
+import sys
+sys.dont_write_bytecode = True
+import os
 from tulip.synth import synthesize
 from tulip.dumpsmach import write_python_case
 
@@ -13,6 +16,13 @@ def synthesiseVehicleController(outputPath='mod\\model\\synthesisation\\output\\
     ctrl = synthesize(spec)
     assert ctrl is not None, 'specification is unrealizable'
     
+    # remove old outputs
+    if os.path.isfile(f'{outputPath}.scxml'):
+        os.remove(f'{outputPath}.scxml')
+    if os.path.isfile(f'{outputPath}.py'):
+        os.remove(f'{outputPath}.py')
+
+
     if not ctrl.save(filename=f'{outputPath}.scxml'):
         print('could not save as scxml')
 

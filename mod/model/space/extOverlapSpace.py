@@ -2,6 +2,7 @@
 import copy
 import random
 from enum import Enum
+from typing import Any
 
 from appControl.exceptions import ControllerException, MapException
 from model.space.spaceBasics import Action, Arena, LocationType, MapLocation, Orientation, SensedArea, Zone, changesPerpendicularLateral
@@ -180,10 +181,12 @@ class ExtOverlapZoneSensedArea(SensedArea):
         for zone in mapData:
             if (not zone.offroadDoesntMatter()) and zone.occupied() is LocationType.OFFROAD and stateData[f'o{str(zone)}'] != 'true':
                 return False
+            elif zone.offroadDoesntMatter() and zone.occupied() is LocationType.OFFROAD and stateData[f'o{str(zone)}'] == 'true':
+                return False
         return True
                     
 
-    def constructSensedArea(self, curLoc: MapLocation, curDir: Orientation, arena: Arena, envNextMoves) -> None:
+    def constructSensedArea(self, curLoc: MapLocation, curDir: Orientation, arena: Arena, envNextMoves: list[Any]) -> None:
         cx = curLoc.x
         cy = curLoc.y
 

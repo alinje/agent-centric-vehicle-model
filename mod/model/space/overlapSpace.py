@@ -2,6 +2,7 @@
 import copy
 import random
 from enum import Enum
+from typing import Any
 
 from appControl.exceptions import ControllerException, MapException
 from model.space.spaceBasics import MapLocation, SensedArea, Zone, changesPerpendicularLateral
@@ -69,7 +70,7 @@ class OverlapZoneSensedArea(SensedArea):
     def agentZone(self) -> OverlapZone:
         return self.zones[OverlapZoneType.AA]
 
-    def constructSensedArea(self, curLoc, curDir, arena, envNextMoves) -> None:
+    def constructSensedArea(self, curLoc, curDir, arena, envNextMoves: list[Any]) -> None:
         cx = curLoc.x
         cy = curLoc.y
         changes = { 

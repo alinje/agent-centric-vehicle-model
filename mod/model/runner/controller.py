@@ -18,7 +18,7 @@ class Controller(ABC):
         pass
 
 class Control(object):
-    def __init__(self, controller, task: Task, transMap):
+    def __init__(self, controller, task: Task, transMap: dict[str,list[Any]]):
         self.controller = controller
         self.task = task
         self.transMap = transMap
