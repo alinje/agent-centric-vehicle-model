@@ -29,6 +29,7 @@ def overlapSpaceSpec() -> GRSpec:
             't_l',
             't_f',
             't_r',
+            't', # BUG in tulip, should not exist: https://github.com/tulip-control/tulip-control/issues/238
         ],
         # TODO traffic dir
     }
@@ -107,23 +108,23 @@ def overlapSpaceSpec() -> GRSpec:
         # some aspects of the target transitions are known even in this simple discretization
         # TODO formulate as lists back and forth?
         # target is static when halting
-        '(move = "m_h") -> (target = X target)',
+        '(move = "m_h") -> (target = (X target))',
 
         # moving away from target will result in not facing the target
         '((move = "m_f") && (target = "t_l" || target = "t_r")) -> (target = X target)',
         '((move = "m_tl" && target = "t_r") || (move = "m_tr" && target = "t_l")) -> ((X target) != "t_f")',
 
         # turning when facing target will result in target changing
-        '((move = "m_tr") && (target = "t_f")) -> (X target = "t_l")', # TODO oor just not in front?
-        '((move = "m_tl") && (target = "t_f")) -> (X target = "t_r")',
+        '((move = "m_tr") && (target = "t_f")) -> ((X target) = "t_l")', # TODO oor just not in front?
+        '((move = "m_tl") && (target = "t_f")) -> ((X target) = "t_r")',
 
         # turning towards the target will not move it to other side of you
-        '((move = "m_tr") && (target = "t_r")) -> (X target != "t_l")',
-        '((move = "m_tl") && (target = "t_l")) -> (X target != "t_r")',
+        '((move = "m_tr") && (target = "t_r")) -> ((X target) != "t_l")',
+        '((move = "m_tl") && (target = "t_l")) -> ((X target) != "t_r")',
 
         # shifting when target is in front will not result in target being on side you shifted towards
-        '((move = "m_slf") && (target = "t_f")) -> (X target != "t_l")',
-        '((move = "m_srf") && (target = "t_f")) -> (X target != "t_r")',
+        '((move = "m_slf") && (target = "t_f")) -> ((X target) != "t_l")',
+        '((move = "m_srf") && (target = "t_f")) -> ((X target) != "t_r")',
 
         # shifting along target front line will not move you to face target
         '(((move = "m_slf") && (target = "t_l")) || ((move = "m_srf") && (target = "t_r"))) -> (X (target != "t_f"))',
@@ -142,10 +143,13 @@ def overlapSpaceSpec() -> GRSpec:
 
     # if multiple paths are available, agent attempts to approach target
     movePrefsTargetForward = [
+        f''
         f'((! {forwardBlocked}) -> (move = "m_f"))',
         # if target is forward, one should keep right
         f'(({forwardBlocked} && (! {rightForwardShiftBlocked})) -> (move = "m_srf"))',
         f'(({forwardBlocked} && (! {leftForwardShiftBlocked}) && {rightForwardShiftBlocked}) -> (move = "m_slf"))',
+        # or turn left
+        f'(({forwardBlocked} && {leftForwardShiftBlocked} && {rightForwardShiftBlocked} && (! {leftTurnBlocked})) -> (move = "m_tl"))',
     ]
     movePrefsTargetLeft = [
         f'((! {leftTurnBlocked}) -> move = "m_tl")',
