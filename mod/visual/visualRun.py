@@ -4,9 +4,13 @@ from PySide6 import QtCore, QtWidgets
 from PySide6.QtGui import QPalette, QColor, QPixmap
 from appControl.exceptions import ControllerException, MapException
 
+from model.simulation.obstacles import MovingObstacle, StaticObstacle
+from model.simulation.temporal import HistoryItem
 from model.space.extOverlapSpace import ExtOverlapZoneSensedArea, ExtOverlapZoneType
+from model.space.locations import Location
 from model.space.overlapSpace import OverlapZoneType
-from model.space.spaceBasics import LocationType
+from model.space.spaceBasics import LocationType, Zone
+from model.task import Agent
 
 
 class VehiclePane(QtWidgets.QWidget):
@@ -31,6 +35,8 @@ class VehiclePane(QtWidgets.QWidget):
         self.layout.setRowStretch(0, 10)
         self.layout.setRowStretch(1, 10)
         self.layout.setRowStretch(2, 2)
+        self.layout.setColumnStretch(0, 2)
+        self.layout.setColumnStretch(1, 1)
 
         self.loadStyleSheet('visual\\style.qss')
 
@@ -65,7 +71,8 @@ class VehiclePane(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout()
         self.paneTxt = QtWidgets.QLabel("timestep 0", alignment=QtCore.Qt.AlignTop)
         layout.addWidget(self.paneTxt)
-
+        self.historyList = QtWidgets.QListWidget()
+        layout.addWidget(self.historyList)
         widget = QtWidgets.QWidget()
         widget.setLayout(layout)
         widget.setObjectName("historyPane")
@@ -84,16 +91,17 @@ class VehiclePane(QtWidgets.QWidget):
         layout.rowCount=arenaH
         layout.columnCount=arenaW
 
-
+        self.arenaDict = {}
         for loc in initArena.locations.values():
             tile = QtWidgets.QFrame()
             tile.setProperty("highlighted", False)
-            tile.setStyleSheet(f'background-color: {LocationType2Color(loc.occ).name()}')
+            tile.setStyleSheet(f'background-color: {Location2Color(loc).name()}')
             layout.addWidget(
                 tile,
                 loc.y,
                 loc.x
             )
+            self.arenaDict[loc] = tile
 
         # frame the tiles in the sensor area
         for zone in initSensorArea.zones.values():
@@ -120,7 +128,7 @@ class VehiclePane(QtWidgets.QWidget):
         # create the individual colored cards
         for loc in initSensorArea.locations.values():
             layout.addWidget(
-                ColoredPane(LocationType2Color(loc.occ)),
+                ColoredPane(Location2BluntColor(loc)),
                 2-loc.x,
                 loc.y
             )
@@ -137,12 +145,12 @@ class VehiclePane(QtWidgets.QWidget):
 
         # create the individual colored cards
         zoneDict = {
-            OverlapZoneType.LF: (ColoredPane(LocationType2Color(initSensorArea.zones[OverlapZoneType.LF].occupied())), 1, 0, 2, 1),
-            OverlapZoneType.LB: (ColoredPane(LocationType2Color(initSensorArea.zones[OverlapZoneType.LB].occupied())), 3, 0, 2, 1),
-            OverlapZoneType.AF: (ColoredPane(LocationType2Color(initSensorArea.zones[OverlapZoneType.AF].occupied())), 0, 1, 2, 1),
-            OverlapZoneType.AA: (ColoredPane(LocationType2Color(initSensorArea.zones[OverlapZoneType.AA].occupied())), 2, 1, 2, 1),
-            OverlapZoneType.RF: (ColoredPane(LocationType2Color(initSensorArea.zones[OverlapZoneType.RF].occupied())), 1, 2, 2, 1),
-            OverlapZoneType.RB: (ColoredPane(LocationType2Color(initSensorArea.zones[OverlapZoneType.RB].occupied())), 3, 2, 2, 1),
+            OverlapZoneType.LF: (ColoredPane(Location2BluntColor(initSensorArea.zones[OverlapZoneType.LF])), 1, 0, 2, 1),
+            OverlapZoneType.LB: (ColoredPane(Location2BluntColor(initSensorArea.zones[OverlapZoneType.LB])), 3, 0, 2, 1),
+            OverlapZoneType.AF: (ColoredPane(Location2BluntColor(initSensorArea.zones[OverlapZoneType.AF])), 0, 1, 2, 1),
+            OverlapZoneType.AA: (ColoredPane(Location2BluntColor(initSensorArea.zones[OverlapZoneType.AA])), 2, 1, 2, 1),
+            OverlapZoneType.RF: (ColoredPane(Location2BluntColor(initSensorArea.zones[OverlapZoneType.RF])), 1, 2, 2, 1),
+            OverlapZoneType.RB: (ColoredPane(Location2BluntColor(initSensorArea.zones[OverlapZoneType.RB])), 3, 2, 2, 1),
         }
 
         for [p, py, px, ph, pw] in zoneDict.values():
@@ -227,19 +235,20 @@ class VehiclePane(QtWidgets.QWidget):
 
         # mark new position on arena pane
         arenaLayout = self.arenaPane.layout()
-        for tile in self.arenaPane.findChildren(QtWidgets.QFrame):
-            tile.setProperty("highlighted", False)
+        zones = task.agent.sensedArea.zones.values()
+        for loc, tile in self.arenaDict.items():
+            tile.setProperty("highlighted", task.agent.sensedArea.inSensedArea(loc))
+            tile.setStyleSheet(f'background-color: {Location2Color(loc).name()}')
 
-        for zone in task.agent.sensedArea.zones.values():
-            for loc in zone.locations:
-                tile = arenaLayout.itemAtPosition(loc.y, loc.x).widget()
-                tile.setProperty("highlighted", True)
-                tile.setStyleSheet(f'background-color: {LocationType2Color(loc.occ).name()}')
+        # for zone in task.agent.sensedArea.zones.values():
+        #     for loc in zone.locations:
+        #         tile = arenaLayout.itemAtPosition(loc.y, loc.x).widget()
+        #         tile.setProperty("highlighted", True)
+        #         tile.setStyleSheet(f'background-color: {Location2BluntColor(loc).name()}')
         
         self.paneTxt.setText(f'timestep {task.time}')
-        newHistoryLog = QtWidgets.QLabel(str(task.history[-1]), alignment=QtCore.Qt.AlignTop)
-        historyLayout = self.historyPane.layout()
-        historyLayout.addWidget(newHistoryLog)
+        newHistoryLog = HistoryListItem(task.history.log[-1])
+        self.historyList.addItem(newHistoryLog)
 
         # I don't know why this needs to be reloaded, but otherwise highlights won't update
         self.loadStyleSheet('visual\\style.qss')
@@ -247,7 +256,7 @@ class VehiclePane(QtWidgets.QWidget):
 
         # show new sensor pane
         for t, tile in self.zoneDict.items():
-            tile.changeColor(LocationType2Color(task.agent.sensedArea.zones[t].occupied()))
+            tile.changeColor(Zone2BluntColor(task.agent.sensedArea.zones[t]))
 
         self.toolBarNextBut.setEnabled(True)
         self.toolBarNextBut.setText('>')
@@ -267,48 +276,46 @@ class ColoredPane(QtWidgets.QWidget):
 
     @staticmethod
     def zonePane(zone) -> ColoredPane:
-        color = LocationType2Color(zone.occupied())
+        color = Zone2BluntColor(zone)
         pane = ColoredPane(color)
         pane.setToolTip(str(zone))
         return pane
 
+class HistoryListItem(QtWidgets.QListWidgetItem):
+    def __init__(self, historyItem: HistoryItem) -> None:
+        super().__init__(str(historyItem))
+    
 
-class Observer(ABC):
-    def update(self, observable, *args, **kwargs):
-        pass
-
-class TaskObserver(Observer):
-    def __init__(self):
-        pass
-    def update(self, observable):
-        pass
-
-
-# extOverlapZoneType2Desc: dict[ExtOverlapZoneType, str] = {
-#     ExtOverlapZoneType.LFF:  '',
-#     ExtOverlapZoneType.LF:   '',
-#     ExtOverlapZoneType.LB:   '',
-#     ExtOverlapZoneType.AF:   '',
-#     ExtOverlapZoneType.AA:   'Agent',
-#     ExtOverlapZoneType.RF:   '',
-#     ExtOverlapZoneType.RF_P: '',
-# }        
-
-def LocationType2Color(tp) -> QColor:
+def Location2Color(loc: Location) -> QColor:
+    tp = loc.locationType
+    if isinstance(loc.occupant, MovingObstacle):
+        return QColor(222,75,50)
+    if isinstance(loc.occupant, StaticObstacle):
+        return QColor(1,1,1)
+    if tp == LocationType.OFFROAD:
+        return QColor(46,133,55) # green
+    if isinstance(loc.occupant, Agent):
+        return QColor(145,162,230) # västtrafik blue
     if tp == LocationType.ROAD:
         return QColor(141,141,141) # gray
     if tp == LocationType.TARGET or tp == LocationType.START:
         return QColor(75,189,176) # teal
-    if tp == LocationType.OFFROAD:
-        return QColor(46,133,55) # green
-    if tp == LocationType.CLEARED_ROAD:
-        return QColor(181,181,181) # light gray
-    if tp == LocationType.OBSTACLE:
-        return QColor(222,75,200) # pink
-    if tp == LocationType.AGENT:
-        return QColor(145,162,230) # västtrafik blue
-    if tp == LocationType.VISITED:
-        return QColor(121,121,121)
+    # if tp == LocationType.CLEARED_ROAD:
+    #     return QColor(181,181,181) # light gray
+    # if tp == LocationType.VISITED:
+    #     return QColor(121,121,121)
     return QColor(255,0,0) # alarming red
 
+def Location2BluntColor(loc: Location) -> QColor:
+    return Occupancy2BluntColor(loc.occupied())
 
+def Zone2BluntColor(zone: Zone) -> QColor:
+    if zone.isAgentZone():
+        return QColor(145,162,230) # västtrafik blue
+    return Occupancy2BluntColor(zone.unpassable())
+
+def Occupancy2BluntColor(occ: bool) -> QColor:
+    if occ:
+        return QColor(222,75,200)
+    return QColor(181,181,181)
+    

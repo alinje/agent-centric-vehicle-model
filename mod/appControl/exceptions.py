@@ -6,3 +6,9 @@ class ControllerException(Exception):
 
 class SynthesisException(Exception):
     pass
+
+class PathException(Exception):
+    pass
+
+class SimulationException(Exception):
+    pass

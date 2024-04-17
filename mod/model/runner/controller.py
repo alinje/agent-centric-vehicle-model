@@ -18,31 +18,28 @@ class Controller(ABC):
         pass
 
 class Control(object):
-    def __init__(self, controller, task: Task, transMap: dict[str,list[Any]]):
+    def __init__(self, controller, task: Task):
         self.controller = controller
         self.task = task
-        self.transMap = transMap
-        self.envNextMoves = self.transMap["Sinit"]
-        self.task.start(envInitMoves=self.envNextMoves)
+        self.task.start()
 
+    def nextEnvironment(self) -> None:
+        self.task.arena.next()
 
-
-    def next(self) -> Task:
-        inputs = self.task.agent.sensedArea.toInputs()
+    def nextAgent(self) -> None:
+        inputs = self.task.agent.sensedArea.toInputs(self.task.agent.orientation)
         try:
             move = self.controller.move(**inputs)
         except ValueError as e:
             print(e)
-            raise ControllerException(f"Environment state {self.controller.state} has no such defined transition") from e
+            raise ControllerException(f"Controller has no defined output for inputs in state {self.controller.state}.") from e
 
-        # find possible next states
-        try:
-            self.envNextMoves = self.transMap[str(self.controller.state)]
-        except KeyError:
-            raise ControllerException(f'scxml and python controllers do not align')
-        # apply output to map
         act = output2ActionEnum(move)
-        self.task.applyAction(act, self.task.arena, self.envNextMoves)
+        self.task.applyAction(act, self.task.arena)
+
+    def next(self) -> Task:
+        self.nextAgent()
+        self.nextEnvironment()
         return self.task
 
     # TODO no. implement as it trying until moves, and report back w actual amount of cycles it took

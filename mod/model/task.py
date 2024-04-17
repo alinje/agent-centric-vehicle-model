@@ -2,34 +2,38 @@ from abc import ABC
 import random
 from typing import Any
 
+from model.simulation.obstacles import Occupant
+from model.simulation.temporal import History
 from model.space.spaceBasics import AbsoluteLocation, Action, Arena, LocationType, Orientation, SensedArea, changesPerpendicularLateral, relativeAction
 
 
-class SpaceOccupying(ABC):
-    pass
 
-class Agent(SpaceOccupying):
+class Agent(Occupant):
     """
     Attributes:
-        curLoc (MapLocation): Current location.
+        curLoc (AbsoluteLocation): Current location.
         orientation (Orientation): Current orientation.
         sensedArea (SensedArea): Area of all locations currently covered by vehicle sensors.)"""
-    def __init__(self, curLoc: AbsoluteLocation, orientation: Orientation, sensedArea: SensedArea) -> None:
-        self.curLoc = curLoc
+    def __init__(self, loc: AbsoluteLocation, orientation: Orientation, sensedArea: SensedArea) -> None:
+        super().__init__(loc)
         self.orientation = orientation
         self.sensedArea = sensedArea
 
-    def move(self, newLoc: AbsoluteLocation, arena: Arena, envNextMoves: list[Any]) -> None:
-        self.curLoc = newLoc
-        self.sensedArea.constructSensedArea(newLoc, self.orientation, arena, envNextMoves)
+    def move(self, newLoc: AbsoluteLocation, arena: Arena) -> None:
+        if self.loc is not None:
+            self.loc.free(self)
+        self.loc = newLoc
+        self.loc.receiveOccupant(self)
+
+        self.sensedArea.constructSensedArea(newLoc, self.orientation, arena)
 
         self.sensedArea.markMove(True)
 
-    def applyAction(self, action: Action, arena: Arena, envNextMoves: list[Any]) -> None:
+    def applyAction(self, action: Action, arena: Arena) -> None:
         locChange = changesPerpendicularLateral(self.orientation, relativeAction[action])
-        newLoc = arena.locations[(self.curLoc.x+locChange[0], self.curLoc.y+locChange[1])]
+        newLoc = arena.locations[(self.loc.x+locChange[0], self.loc.y+locChange[1])]
         self.sensedArea.markMove(False)
-        self.move(newLoc, arena, envNextMoves)
+        self.move(newLoc, arena)
         
 
 
@@ -45,21 +49,22 @@ class Task(object):
         history (list[Action]): All actions taken.
     """
     def __init__(self, arena: Arena, sensedArea: SensedArea) -> None:
+
         self.arena = arena
         self.agent = Agent(None, Orientation.EAST, sensedArea)
         self.time = 0
-        self.history: list[Action] = []
+        self.history = History()
        
 
-    def start(self, envInitMoves: list[Any], startLocation: AbsoluteLocation=None) -> None:
+    def start(self, startLocation: AbsoluteLocation=None) -> None:
         if startLocation == None:
-            startLocations = self.arena.getStartLocations()
+            startLocations = list(filter(lambda a: not a.occupied(), self.arena.getStartLocations()))
             startLocation = startLocations[random.randrange(0, len(startLocations))]
         if self.arena.locationType(startLocation.x, startLocation.y) != LocationType.START:
             raise Exception()
-        self.agent.move(startLocation, self.arena, envInitMoves)
+        self.agent.move(startLocation, self.arena)
 
-    def applyAction(self, action: Action, arena: Arena, envNextMoves: list[Any]) -> None:
+    def applyAction(self, action: Action, arena: Arena) -> None:
         self.time += 1
-        self.agent.applyAction(action, arena, envNextMoves)
-        self.history.append(action)
+        self.agent.applyAction(action, arena)
+        self.history.addToHistory(action, arena)

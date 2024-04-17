@@ -5,7 +5,9 @@ from enum import Enum
 from typing import Any
 
 from appControl.exceptions import ControllerException, MapException
-from model.space.spaceBasics import Action, Arena, LocationType, MapLocation, Orientation, SensedArea, Zone, changesPerpendicularLateral
+from model.simulation.obstacles import MovingObstacle, Occupant, Path
+from model.space.spaceBasics import Action, Arena, LocationType, AbsoluteLocation, Orientation, SensedArea, Trajectory, Zone, changesPerpendicularLateral, trajectoryFrom2Orientation, trajectoryFromChangeOrientation
+from model.task import Agent
 
 
 class ExtOverlapZoneType(Enum):
@@ -30,12 +32,6 @@ class ExtOverlapZone(Zone):
 
     def __str__(self):
         return ExtOverlapZone.zoneString[self.tp]
-
-    # def occupied(self) -> LocationType:
-    #     if self.tp != ExtOverlapZoneType.RF_P:
-    #         return super().occupied()
-    #     for loc in self.locations:
-    #         if loc.occ == LocationType.
 
     zoneString: dict[ExtOverlapZoneType, str] = {
         ExtOverlapZoneType.LF:   'lf',
@@ -66,11 +62,21 @@ class ExtOverlapZone(Zone):
     def offroadDoesntMatter(self) -> bool:
         return self.tp == ExtOverlapZoneType.LFF or self.tp == ExtOverlapZoneType.RF_P or self.tp == ExtOverlapZoneType.LB 
     
-    def toInput(self) -> bool:
-        obstaclesLeftBehind = [] # TODO this is what's obviously wrong atm
-        return not ((self.offroadDoesntMatter() or self.occupied() != LocationType.OFFROAD) and self.occupied() != LocationType.OBSTACLE)
+    def toInput(self, agentOrientation: Orientation) -> bool:
+        offroad = (not self.offroadDoesntMatter()) and any([loc.locationType == LocationType.OFFROAD for loc in self.locations])
+        occupiedBlocking = (not self.offroadDoesntMatter()) and self.occupied() and (not any([isinstance(loc.occupant, Agent) for loc in self.locations]))
+        lb = self.tp == ExtOverlapZoneType.LB and self.occupied() and (any([isinstance(occupant, MovingObstacle) and (trajectoryFrom2Orientation(agentOrientation, occupant.orientation)== Trajectory.LATERAL_F) for occupant in self.occupants()]))
+        # TODO the others
+        return offroad or occupiedBlocking or lb
 
-        
+    def occupants(self) -> list[Occupant]:
+        return [loc.occupant for loc in self.locations if loc.occupant != None]
+
+    def isAgentZone(self) -> bool:
+        return self.tp == ExtOverlapZoneType.AA
+    
+    def unpassable(self) -> bool:
+        return ((not self.offroadDoesntMatter()) and any([loc.locationType == LocationType.OFFROAD for loc in self.locations])) or self.occupied()
 
     @staticmethod
     def obstaclesDict() -> dict[ExtOverlapZoneType, str]:
@@ -104,18 +110,11 @@ class ExtOverlapZone(Zone):
 
     @staticmethod
     def pathWillExist():
-        staticLeft = ''
-        # staticLeftOpensOtherPath = 'orf -> (X olf)' #'((olf && (! olff) && (! olb) && (move = "halt")) && (X (olf && (! olff) && (! olb)))) -> (X (! (of && orf)))'
+        staticLeftOpensOtherPath = '(olf && (! olff) && (! olb)) -> (! (of && orf))'
         locked = ExtOverlapZone.pathExistsGuaranteed()
         notMovingObsPermanentOcc = ['(! olff)', '(! olb)', '(! orfp)']
-        return [locked] + notMovingObsPermanentOcc
+        return [staticLeftOpensOtherPath, locked] + notMovingObsPermanentOcc
 
-    @staticmethod
-    def pathExistsGuaranteedAlt():
-        return [f'(! {ExtOverlapZone.leftForwardPossiblyBlocked()})', f'(! {ExtOverlapZone.forwardPossiblyBlocked()})', f'(! {ExtOverlapZone.rightForwardPossiblyBlocked()})']
-    # @staticmethod
-    # def pathExistsGuaranteedNext():
-    #     offroadRight = '(orf && (X orf)) -> X (eventually left or right will open)'
     @staticmethod
     def pathProgression():
         return '(move != "halt")'
@@ -186,7 +185,13 @@ class ExtOverlapZoneSensedArea(SensedArea):
         return True
                     
 
-    def constructSensedArea(self, curLoc: MapLocation, curDir: Orientation, arena: Arena, envNextMoves: list[Any]) -> None:
+    def constructSensedArea(self, curLoc: AbsoluteLocation, curDir: Orientation, arena: Arena) -> None:
+        # testLoc = AbsoluteLocation(3,0,LocationType.ROAD)
+        # testPath = Path([(2,0),(1,0),(0,0)], False, 'test')
+        # testLoc.occupant = MovingObstacle(testLoc, testPath, arena)
+        # zone = ExtOverlapZone(ExtOverlapZoneType.LB, [testLoc, AbsoluteLocation(4,0, LocationType.ROAD)])
+        # zone.toInput(Orientation.EAST)
+
         cx = curLoc.x
         cy = curLoc.y
 
@@ -197,18 +202,5 @@ class ExtOverlapZoneSensedArea(SensedArea):
             try:
                 locs = [arena.locations[(cx+dis[0], cy+dis[1])] for dis in v]
             except KeyError:
-                raise MapException(f'Map end, position ({cx+v[0][0]}, {cy+v[0][1]}) and/or {cx+v[1][0]}, {cy+v[1][1]} does not exist')
+                raise MapException(f'Map end, position ({cx+v[0][0]}, {cy+v[0][1]}) and/or ({cx+v[1][0]}, {cy+v[1][1]}) does not exist')
             self.zones[k].locations = locs
-
-        remainingNextMoves = copy.deepcopy(envNextMoves)
-        try:
-            stateData = remainingNextMoves.pop(random.randint(0, len(remainingNextMoves)-1))
-            while not self.applicableState(self.zones.values(), stateData):
-                stateData = remainingNextMoves.pop(random.randint(0, len(remainingNextMoves)-1))
-        except ValueError:
-            zoneStrs = []
-            for zone in self.zones.values():
-                zoneStrs.append(f'{str(zone)}: {str(zone.occupied())}')
-            raise ControllerException(f'No next state is compatible with map, \n\nmap:\n{'\n'.join(zoneStrs)}\n\nnext states available:\n{str(envNextMoves)}')
-        
-        self.applyState(self.zones.values(), stateData)

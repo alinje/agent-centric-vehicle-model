@@ -6,6 +6,18 @@ QWidget#toolBar {
     border-color: #393E41;
 }
 
+QWidget#historyPane {
+    background-color: #D3D0CB;
+    border-style: ridge;
+    border-width: 2px;
+    border-color: #393E41;
+}
+
+QListWidgetItem {
+    background-color: #e7e5df;
+
+}
+
 QLabel {
     color: #393E41;
 }
