@@ -5,24 +5,24 @@ from PySide6.QtGui import QPalette, QColor, QPixmap
 from appControl.exceptions import ControllerException, MapException
 
 from model.simulation.obstacles import MovingObstacle, StaticObstacle
-from model.simulation.temporal import HistoryItem
+from model.simulation.history import HistoryItem
 from model.space.extOverlapSpace import ExtOverlapZoneSensedArea, ExtOverlapZoneType
-from model.space.locations import Location
+from model.space.locations import AbsoluteLocation, Location
 from model.space.overlapSpace import OverlapZoneType
-from model.space.spaceBasics import LocationType, Zone
-from model.task import Agent
+from model.space.spaceBasics import LocationType, Orientation, Zone
+from model.task import Agent, Task
 
 
 class VehiclePane(QtWidgets.QWidget):
-    def __init__(self, arena, initSensorArea, nextStateHandler):
+    def __init__(self, task: Task):
         super().__init__()
-        self.arena = arena
-        self.nextStateHandler = nextStateHandler
+        self.task = task
+        self.arena = task.arena
 
         self.windowTitle = 'yodeli'
         self.historyPane = self.createHistoryPane()
-        self.arenaPane = self.createArenaPane(self.arena, initSensorArea, 100, 800)
-        self.sensorPane, wrapSensorAreaPane = self.createSensorAreaPane(initSensorArea, 150, 200)
+        self.arenaPane = self.createArenaPane(self.arena, self.task.agent.sensedArea, 100, 800)
+        self.sensorPane, wrapSensorAreaPane = self.createSensorAreaPane(self.task.agent.sensedArea, 150, 200)
         self.toolBar = self.createToolBar()
 
         self.layout = QtWidgets.QGridLayout(self)
@@ -41,6 +41,7 @@ class VehiclePane(QtWidgets.QWidget):
         self.loadStyleSheet('visual\\style.qss')
 
         self.toolBarNextBut.clicked.connect(self.nextState)
+        self.toolBarHalfStep.clicked.connect(self.nextHalfState)
 
     def loadStyleSheet(self, path):
         with open(path, 'r') as f:
@@ -53,17 +54,19 @@ class VehiclePane(QtWidgets.QWidget):
         layout.setDirection(QtWidgets.QVBoxLayout.Direction.LeftToRight)
 
         self.toolBarLayout = layout
-        self.toolBarNextBut = QtWidgets.QPushButton('>')
-        self.toolBarBfBut = QtWidgets.QPushButton('<')
+        self.toolBarHalfStep = QtWidgets.QPushButton('>')
+        self.toolBarNextBut = QtWidgets.QPushButton('>>')
+        # self.toolBarBfBut = QtWidgets.QPushButton('<')
         self.toolBarInfoLabel = QtWidgets.QLabel("")
 
-        layout.addWidget(self.toolBarBfBut)
+        # layout.addWidget(self.toolBarBfBut)
+        layout.addWidget(self.toolBarHalfStep)
         layout.addWidget(self.toolBarNextBut)
         layout.addWidget(self.toolBarInfoLabel)
 
         widget = QtWidgets.QWidget()
         widget.setLayout(layout)
-        widget.setFixedHeight(40)
+        widget.setFixedHeight(50)
         widget.setObjectName("toolBar")
         return widget
     
@@ -166,13 +169,13 @@ class VehiclePane(QtWidgets.QWidget):
 
         # create the individual colored cards
         zoneDict = {
-            ExtOverlapZoneType.LFF:  (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.LFF]), 0, 0, 2, 1),
-            ExtOverlapZoneType.LF:   (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.LF]),  2, 0, 2, 1),
-            ExtOverlapZoneType.LB:   (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.LB]),  4, 0, 2, 1),
-            ExtOverlapZoneType.AF:   (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.AF]),  1, 1, 2, 1),
-            ExtOverlapZoneType.AA:   (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.AA]),  3, 1, 2, 1),
-            ExtOverlapZoneType.RF:   (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.RF]),  2, 2, 2, 1),
-            ExtOverlapZoneType.RF_P: (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.RF_P]), 1, 3, 1, 1),
+            ExtOverlapZoneType.LFF:  (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.LFF] , Orientation.EAST), 0, 0, 2, 1), # TODO this should just not be created manually
+            ExtOverlapZoneType.LF:   (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.LF]  , Orientation.EAST),  2, 0, 2, 1),
+            ExtOverlapZoneType.LB:   (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.LB]  , Orientation.EAST),  4, 0, 2, 1),
+            ExtOverlapZoneType.AF:   (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.AF]  , Orientation.EAST),  1, 1, 2, 1),
+            ExtOverlapZoneType.AA:   (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.AA]  , Orientation.EAST),  3, 1, 2, 1),
+            ExtOverlapZoneType.RF:   (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.RF]  , Orientation.EAST),  2, 2, 2, 1),
+            ExtOverlapZoneType.RF_P: (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.RF_P], Orientation.EAST), 1, 3, 1, 1),
         }
 
         for [p, py, px, ph, pw] in zoneDict.values():
@@ -209,7 +212,6 @@ class VehiclePane(QtWidgets.QWidget):
     def createNextStatePane(self):
         pass
 
-    # TODO next with args
     @QtCore.Slot()
     def nextState(self):
         self.toolBarNextBut.setEnabled(False)
@@ -222,44 +224,51 @@ class VehiclePane(QtWidgets.QWidget):
 
 
         try:
-            task = self.nextStateHandler()
+            self.task.next()
         except ControllerException as e:
             print(e)
-            self.toolBarInfoLabel.setText('No plan for current environment state')
+            self.toolBarInfoLabel.setText(f'No plan for current environment state,n{str(e)}')
+            self.toolBarInfoLabel.setStyleSheet(f'color: red')
             return
         except MapException as e:
+            print(e)
             self.toolBarInfoLabel.setText(str(e))
             self.toolBarInfoLabel.setStyleSheet(f'color: red')
             return
 
-
         # mark new position on arena pane
-        arenaLayout = self.arenaPane.layout()
-        zones = task.agent.sensedArea.zones.values()
         for loc, tile in self.arenaDict.items():
-            tile.setProperty("highlighted", task.agent.sensedArea.inSensedArea(loc))
+            tile.setProperty("highlighted", self.task.agent.sensedArea.inSensedArea(loc))
             tile.setStyleSheet(f'background-color: {Location2Color(loc).name()}')
 
-        # for zone in task.agent.sensedArea.zones.values():
-        #     for loc in zone.locations:
-        #         tile = arenaLayout.itemAtPosition(loc.y, loc.x).widget()
-        #         tile.setProperty("highlighted", True)
-        #         tile.setStyleSheet(f'background-color: {Location2BluntColor(loc).name()}')
         
-        self.paneTxt.setText(f'timestep {task.time}')
-        newHistoryLog = HistoryListItem(task.history.log[-1])
+        self.paneTxt.setText(f'timestep {self.task.history.time}')
+        newHistoryLog = HistoryListItem(self.task.history.log[-1])
         self.historyList.addItem(newHistoryLog)
 
         # I don't know why this needs to be reloaded, but otherwise highlights won't update
         self.loadStyleSheet('visual\\style.qss')
 
 
-        # show new sensor pane
-        for t, tile in self.zoneDict.items():
-            tile.changeColor(Zone2BluntColor(task.agent.sensedArea.zones[t]))
+        # # show new sensor pane
+        # for t, tile in self.zoneDict.items():
+        #     zone = task.agent.sensedArea.zones[t]
+        #     tile.changeZoneColor(zone, task.agent)
+        self.drawSensorPane(self.task.agent)
 
         self.toolBarNextBut.setEnabled(True)
         self.toolBarNextBut.setText('>')
+
+    @QtCore.Slot()
+    def nextHalfState(self):
+        pass
+
+    def drawSensorPane(self, agent: Agent) -> None:
+        # show new sensor pane
+        for t, tile in self.zoneDict.items():
+            zone = self.task.agent.sensedArea.zones[t]
+            tile.changeZoneColor(zone, agent)
+
 
 class ColoredPane(QtWidgets.QWidget):
     def __init__(self, color):
@@ -274,12 +283,20 @@ class ColoredPane(QtWidgets.QWidget):
         palette.setColor(QPalette.ColorRole.Window, color)
         self.setPalette(palette)
 
+    def changeZoneColor(self, zone: Zone, agentOrientation: Orientation):
+        self.changeColor(Zone2BluntColor(zone, agentOrientation))
+
     @staticmethod
-    def zonePane(zone) -> ColoredPane:
-        color = Zone2BluntColor(zone)
+    def zonePane(zone: Zone, agentOrientation: Orientation) -> ColoredPane:
+        color = Zone2BluntColor(zone, Orientation)
         pane = ColoredPane(color)
         pane.setToolTip(str(zone))
         return pane
+    
+class MapTile(QtWidgets.QFrame):
+    def __init__(self, loc: AbsoluteLocation):
+        super().__init__()
+
 
 class HistoryListItem(QtWidgets.QListWidgetItem):
     def __init__(self, historyItem: HistoryItem) -> None:
@@ -309,10 +326,10 @@ def Location2Color(loc: Location) -> QColor:
 def Location2BluntColor(loc: Location) -> QColor:
     return Occupancy2BluntColor(loc.occupied())
 
-def Zone2BluntColor(zone: Zone) -> QColor:
+def Zone2BluntColor(zone: Zone, agentOrientation: Orientation) -> QColor:
     if zone.isAgentZone():
         return QColor(145,162,230) # västtrafik blue
-    return Occupancy2BluntColor(zone.unpassable())
+    return Occupancy2BluntColor(zone.toInput(agentOrientation))
 
 def Occupancy2BluntColor(occ: bool) -> QColor:
     if occ:

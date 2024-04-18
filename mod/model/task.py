@@ -2,42 +2,15 @@ from abc import ABC
 import random
 from typing import Any
 
+from appControl.exceptions import ControllerException
+from model.simulation.agent import Agent
 from model.simulation.obstacles import Occupant
-from model.simulation.temporal import History
+from model.simulation.history import History, HistoryItem
 from model.space.spaceBasics import AbsoluteLocation, Action, Arena, LocationType, Orientation, SensedArea, changesPerpendicularLateral, relativeAction
 
 
 
-class Agent(Occupant):
-    """
-    Attributes:
-        curLoc (AbsoluteLocation): Current location.
-        orientation (Orientation): Current orientation.
-        sensedArea (SensedArea): Area of all locations currently covered by vehicle sensors.)"""
-    def __init__(self, loc: AbsoluteLocation, orientation: Orientation, sensedArea: SensedArea) -> None:
-        super().__init__(loc)
-        self.orientation = orientation
-        self.sensedArea = sensedArea
 
-    def move(self, newLoc: AbsoluteLocation, arena: Arena) -> None:
-        if self.loc is not None:
-            self.loc.free(self)
-        self.loc = newLoc
-        self.loc.receiveOccupant(self)
-
-        self.sensedArea.constructSensedArea(newLoc, self.orientation, arena)
-
-        self.sensedArea.markMove(True)
-
-    def applyAction(self, action: Action, arena: Arena) -> None:
-        locChange = changesPerpendicularLateral(self.orientation, relativeAction[action])
-        newLoc = arena.locations[(self.loc.x+locChange[0], self.loc.y+locChange[1])]
-        self.sensedArea.markMove(False)
-        self.move(newLoc, arena)
-        
-
-
-#############################
         
 class Task(object):
     """
@@ -45,14 +18,12 @@ class Task(object):
         agent (Agent): Agent of the task.
         arena (Arena): Arena of the task.
         completed (bool): Whether the task is completed.
-        time (int): How many transitions that have been made.
         history (list[Action]): All actions taken.
     """
-    def __init__(self, arena: Arena, sensedArea: SensedArea) -> None:
+    def __init__(self, arena: Arena, agents: list[Agent]) -> None:
 
         self.arena = arena
-        self.agent = Agent(None, Orientation.EAST, sensedArea)
-        self.time = 0
+        self.agent = agents[0]#Agent(None, Orientation.EAST, sensedArea) # TODO multiple agents
         self.history = History()
        
 
@@ -64,7 +35,19 @@ class Task(object):
             raise Exception()
         self.agent.move(startLocation, self.arena)
 
-    def applyAction(self, action: Action, arena: Arena) -> None:
-        self.time += 1
-        self.agent.applyAction(action, arena)
-        self.history.addToHistory(action, arena)
+    def nextEnvironment(self) -> HistoryItem:
+        return self.arena.next(self.arena) # probably should be from list of temporals, not this arena that also doesn't need itself as argument
+
+    def nextAgent(self) -> HistoryItem:
+        return self.agent.next(self.arena)
+
+    def next(self) -> None:
+        agentLog = self.nextAgent()
+        envLog1 = self.nextEnvironment() # TODO twice!!
+        # envLog2 = self.nextEnvironment()
+        self.history.addToHistory([agentLog, envLog1])
+        # self.history.addToHistory([envLog2])
+
+    def nextHalfStep(self) -> None:
+        envLog = self.nextEnvironment()
+        self.history.addToHistory([envLog])

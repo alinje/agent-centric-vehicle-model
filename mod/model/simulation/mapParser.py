@@ -10,12 +10,13 @@ lineSplitRegex = r'(?P<desc>(?:(?:\d+\s?)+,\s?(?:\d+\s?)+;\s))'
 coordSplitRegex = r'(?P<y>\d+\s?)+,\s?(?P<x>\d+\s?)+;'
 
 def parseOccupiedMap(arenaMap: str) -> Arena:
+    # TODO agent spawn
     [plan, arenaMap] = arenaMap.split('plan end', 1)
     locations = plan2Locations(plan.split('\n'))
     arena = OccupiedArena(locations)
     pathMaps = regex.findall(pathSplitRegex, arenaMap)
     paths = pathMaps2paths(pathMaps)
-    staticObstacles = StaticObstacleSpawn('static_obstacles', 3)
+    staticObstacles = StaticObstacleSpawn('static_obstacles', 3) #  TODO move to map
     arena.populate(paths + [staticObstacles])
     return arena
 

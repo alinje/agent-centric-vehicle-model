@@ -3,13 +3,14 @@ from abc import ABC
 import random
 
 from appControl.exceptions import PathException, SimulationException
+from model.simulation.history import EnvironmentMoveItem, HistoryItem
 from model.space.spaceBasics import AbsoluteLocation, Arena, LocationType, Orientation, orientationFromChange
 
 class Temporal(ABC):
-    def __init__(self) -> None:
-        pass
+    def __init__(self, name: str='NaN') -> None:
+        self.name = name
 
-    def next(self, arena: Arena) -> None:# TODO just kwargs, args?
+    def next(self, arena: Arena) -> HistoryItem:# TODO just kwargs, args?
         pass
 
 
@@ -67,8 +68,7 @@ class StaticObstacleSpawn(OccupancyPattern):
             loc = random.choice(arena.unoccupiedLocations())
             StaticObstacle(loc)
 
-
-class Occupant(ABC):
+class Occupant(ABC): # TODO move 'move' here?
     def __init__(self, loc: AbsoluteLocation) -> None:
         self.loc = loc
         if loc != None:
@@ -127,9 +127,11 @@ class OccupiedArena(Arena, Temporal):
         self.unoccupiedBuffer = [loc for loc in self.locations.values() if not loc.occupied()]
         return self.unoccupiedBuffer
 
-    def next(self) -> None:
+    def next(self, arena: Arena = None) -> None:
+        logs = []
         for occupant in self.temporalOccupants():
-            occupant.next(self)
+            logs.append(occupant.next(self))
+        return EnvironmentMoveItem(logs)
 
     def populate(self, patterns: list[OccupancyPattern]):
         # NLVL aon one obstacle per path
