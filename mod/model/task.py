@@ -20,20 +20,23 @@ class Task(object):
         completed (bool): Whether the task is completed.
         history (list[Action]): All actions taken.
     """
-    def __init__(self, arena: Arena, agents: list[Agent]) -> None:
+    def __init__(self, arena: Arena, temporalController) -> None:
 
         self.arena = arena
-        self.agent = agents[0]#Agent(None, Orientation.EAST, sensedArea) # TODO multiple agents
+        self.temporalController = temporalController
+        # self.agent = temporalController.defaultAgent#Agent(None, Orientation.EAST, sensedArea) # TODO multiple agents
         self.history = History()
        
 
     def start(self, startLocation: AbsoluteLocation=None) -> None:
-        if startLocation == None:
-            startLocations = list(filter(lambda a: not a.occupied(), self.arena.getStartLocations()))
-            startLocation = startLocations[random.randrange(0, len(startLocations))]
-        if self.arena.locationType(startLocation.x, startLocation.y) != LocationType.START:
-            raise Exception()
-        self.agent.move(startLocation, self.arena)
+        self.temporalController.populate(self.arena)
+        self.agent = self.temporalController.defaultAgent
+        # if startLocation == None:
+        #     startLocations = list(filter(lambda a: not a.occupied(), self.arena.getStartLocations()))
+        #     startLocation = startLocations[random.randrange(0, len(startLocations))]
+        # if self.arena.locationType(startLocation.x, startLocation.y) != LocationType.START:
+        #     raise Exception()
+        # self.agent.move(startLocation, self.arena)
 
     def nextEnvironment(self) -> HistoryItem:
         return self.arena.next(self.arena) # probably should be from list of temporals, not this arena that also doesn't need itself as argument

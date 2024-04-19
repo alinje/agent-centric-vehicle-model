@@ -12,10 +12,10 @@ class Agent(Occupant, Temporal):
         curLoc (AbsoluteLocation): Current location.
         orientation (Orientation): Current orientation.
         sensedArea (SensedArea): Area of all locations currently covered by vehicle sensors.)"""
-    def __init__(self, loc: AbsoluteLocation, orientation: Orientation, sensedArea: SensedArea, controller: Control) -> None:
+    def __init__(self, loc: AbsoluteLocation, orientation: Orientation, zoneLayout: SensedArea, controller: Control) -> None:
         super().__init__(loc)
         self.orientation = orientation
-        self.sensedArea = sensedArea
+        self.sensedArea = zoneLayout
         self.controller = controller
 
     # TODO these have unclear separation of concern, clean

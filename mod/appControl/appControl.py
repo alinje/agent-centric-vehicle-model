@@ -17,13 +17,10 @@ def showGraphicView(mapFileName, controller):
         mapFileName (string): Path to file representing a map.
         controllerFileName (string): Path to file representing a controller."""
     arenaMap = readMap(mapFileName)
-    arena = parseOccupiedMap(arenaMap)
-    sensedArea = ExtOverlapZoneSensedArea({
-        ExtOverlapZoneType.RF_P: [], # no cars may cross from right on this map type
-    })
     control = Control(controller)
-    agent = Agent(None, Orientation.EAST, sensedArea, control)
-    task = Task(arena, [agent])
+    [arena, temporalController] = parseOccupiedMap(arenaMap, control)
+
+    task = Task(arena, temporalController)
     task.start()
     
     app = QApplication([])

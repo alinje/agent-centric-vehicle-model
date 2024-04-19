@@ -25,6 +25,16 @@ class Orientation(IntEnum):
     SOUTH = 3
     WEST = 4
 
+def orientationFromString(orient: str) -> Orientation:
+    if orient == 'NORTH':
+        return Orientation.NORTH
+    if orient == 'EAST':
+        return Orientation.EAST
+    if orient == 'SOUTH':
+        return Orientation.SOUTH
+    if orient == 'WEST':
+        return Orientation.WEST
+    raise ValueError(f'{orient} can not be parsed as an orientation.')
 
 class Zone(ABC):
     def __init__(self, tp, locations):

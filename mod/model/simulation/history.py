@@ -46,3 +46,10 @@ class AgentMoveItem(HistoryItem):
 
     def __str__(self) -> str:
         return f'{str(self.agentName)}: {str(self.action)} from {str(self.preLoc)} to {str(self.postLoc)}'
+
+class SpawnHistoryItem(HistoryItem):
+    def __init__(self, namesSpawned: list[str]) -> None:
+        self.namesSpawned = namesSpawned
+
+    def __str__(self) -> str:
+        return f'spawns:\n {', '.join([str(log) for log in self.namesSpawned])}'

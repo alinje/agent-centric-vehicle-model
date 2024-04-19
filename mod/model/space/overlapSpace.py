@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Any
 
 from appControl.exceptions import ControllerException, MapException
-from model.space.spaceBasics import MapLocation, SensedArea, Zone, changesPerpendicularLateral
+from model.space.spaceBasics import AbsoluteLocation, SensedArea, Zone, changesPerpendicularLateral
 
 
 class OverlapZoneType(Enum):
@@ -18,7 +18,7 @@ class OverlapZoneType(Enum):
 
 # TODO comment explanations to why there is no language for the logic
 class OverlapZone(Zone):
-    def __init__(self, tp: OverlapZoneType, locations: dict[tuple[int,int],MapLocation]) -> None:
+    def __init__(self, tp: OverlapZoneType, locations: dict[tuple[int,int],AbsoluteLocation]) -> None:
         self.tp = tp
         self.locations = locations
 

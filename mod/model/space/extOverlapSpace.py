@@ -4,8 +4,8 @@ import random
 from enum import Enum
 from typing import Any
 
-from appControl.exceptions import ControllerException, MapException
-from model.simulation.obstacles import MovingObstacle, Occupant, Path
+from appControl.exceptions import MapException
+from model.simulation.obstacles import MovingObstacle, Occupant
 from model.space.spaceBasics import Action, Arena, LocationType, AbsoluteLocation, Orientation, SensedArea, Trajectory, Zone, changesPerpendicularLateral, trajectoryFrom2Orientation, trajectoryFromChangeOrientation
 from model.task import Agent
 
