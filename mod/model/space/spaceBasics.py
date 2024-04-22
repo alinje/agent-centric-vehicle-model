@@ -1,9 +1,13 @@
+from __future__ import annotations
+
 from abc import ABC
+import copy
 from enum import Enum, IntEnum
+from functools import reduce
 import sys
 from typing import Any, List
 
-from model.space.locations import AbsoluteLocation, LocationType
+from model.space.locations import AbsoluteLocation, Location, LocationType, RelativeLocation
 
 
 class Action(Enum):
@@ -37,8 +41,12 @@ def orientationFromString(orient: str) -> Orientation:
     raise ValueError(f'{orient} can not be parsed as an orientation.')
 
 class Zone(ABC):
-    def __init__(self, tp, locations):
-        self.tp = tp
+    """ A set of locations grouped by the need for common abstraction.
+    
+    Attributes:
+        zoneLayout (dict[Enum, list[tuple[int,int]]): A mapping between an enum representing a zone and its related relative locations.
+    """
+    def __init__(self, tp, locations: list[RelativeLocation]):
         self.locations = locations
 
     def occupied(self) -> bool:
@@ -47,6 +55,14 @@ class Zone(ABC):
     def unpassable(self) -> bool:
         return any([loc.unpassable() for loc in self.locations])
     
+    def cover(self) -> tuple[tuple[int,int],tuple[int,int]]:
+        xs, ys = [x for (x,_) in self.locations], [y for (_,y) in self.locations]
+        return ((min(xs), min(ys)), (max(xs), max(ys)))
+    
+    def size(self) -> tuple[int,int]:
+        xs, ys = [x for (x,_) in self.locations], [y for (_,y) in self.locations]
+        return (max(xs)-min(xs), max(ys)-min(ys))
+
     def markTrail(self, present) -> None:
         pass
 
@@ -55,6 +71,19 @@ class Zone(ABC):
 
     def isAgentZone(self) -> bool:
         pass
+
+class NonInvadingSpace(Zone):
+    def __init__(self, loc: Location, arena: Arena):
+        self.centerLoc = loc
+        self.locations = [
+            loc,
+            arena.locations[(max(0,loc.x-1), loc.y)],
+            arena.locations[(min(loc.x+1,arena.getWidth()-1), loc.y)],
+            arena.locations[(loc.x, max(0,loc.y-1))],
+            arena.locations[(loc.x, min(arena.getHeight()-1,loc.y+1))],
+        ]
+
+
 
 class Arena(object):
     """
@@ -96,7 +125,12 @@ class Arena(object):
                 startLocs.append(loc)
         return startLocs
 
-def changesPerpendicularLateral(curDir, changes):
+    # TODO move to OccupiedArena? Or merge?
+    def safeZoneOccupied(self, loc: AbsoluteLocation) -> bool:
+        zone = NonInvadingSpace(loc, self)
+        return zone.occupied()
+
+def changesPerpendicularLateral(curDir, changes) -> tuple[int,int]:
     """
     Changes from input (p,l) in relative formulation to output in changes in global formulation."""
     (p,l) = changes
@@ -181,3 +215,37 @@ class SensedArea(ABC):
 
     def inSensedArea(self, loc: AbsoluteLocation) -> bool:
         return any(loc in zone.locations for zone in self.zones.values())
+    
+        
+    _zoneLayout = {}
+    @property
+    def zoneLayout(self) -> dict[Enum, list[tuple[int,int]]]:
+        return self._zoneLayout
+    # @zoneLayout.setter
+    # def zoneLayout(self, newItem: tuple[Enum, list[tuple[int,int]]]) -> None:
+    #     self._zoneLayout[newItem[0]] = newItem[1]
+
+    def zoneLayoutZeroIndexed(self) -> dict[Enum, list[tuple[int,int]]]:
+        ps, ls = [p for (p,_) in reduce(lambda x, y: x + y, self._zoneLayout.values())], [l for (_,l) in reduce(lambda x, y: x + y, self._zoneLayout.values())]
+        minPs, minLs = min(ps), min(ls)
+        zi = {k: [(p-minPs, l-minLs) for (p,l) in v] for k,v in self._zoneLayout.items()}
+        return zi
+
+    def zoneCoverZeroIndexed(self) -> dict[Enum, tuple[tuple[int,int]]]:
+        # dict = {}
+        # for k, locs in self.zoneLayoutZeroIndexed().items():
+        #     lx, ly, hx, hy = 0
+        #     for loc in locs
+        #         lx = loc[0][0] if loc[0][0] < lx else lx
+        #         lx = loc[0][0] if loc[0][0] < lx else lx
+        #         lx = loc[0][0] if loc[0][0] < lx else lx
+        #         lx = loc[0][0] if loc[0][0] < lx else lx
+        return {k:
+                ((min([loc[0] for loc in locs]),min([loc[1] for loc in locs])),
+                 (max([loc[0] for loc in locs]),max([loc[1] for loc in locs])))
+                for k, locs in self.zoneLayoutZeroIndexed().items()}
+
+
+    def zoneLayoutSize(self) -> tuple[int,int]:
+        ps, ls = [p for (p,_) in reduce(lambda a, b: a + b, self._zoneLayout.values())], [l for (_,l) in reduce(lambda a, b: a + b, self._zoneLayout.values())]
+        return (max(ps) - min(ps), max(ls) - min(ls))

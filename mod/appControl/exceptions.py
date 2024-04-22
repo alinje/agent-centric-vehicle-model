@@ -12,3 +12,6 @@ class PathException(Exception):
 
 class SimulationException(Exception):
     pass
+
+class SpawnException(SimulationException):
+    pass

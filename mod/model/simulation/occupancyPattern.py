@@ -2,10 +2,9 @@ from abc import ABC
 import random
 from typing import Any
 
-from appControl.exceptions import PathException, SimulationException
+from appControl.exceptions import PathException, SimulationException, SpawnException
 from model.simulation.agent import Agent
-from model.simulation.history import HistoryItem, SpawnHistoryItem
-from model.simulation.obstacles import MovingObstacle, Occupant, OccupiedArena, StaticObstacle, Temporal
+from model.simulation.obstacles import MovingObstacle, Occupant, OccupiedArena, StaticObstacle
 from model.space.extOverlapSpace import ExtOverlapZoneSensedArea
 from model.space.spaceBasics import AbsoluteLocation, Arena, Orientation, orientationFromChange
 
@@ -64,17 +63,27 @@ class Path(OccupancyPattern):
         
 
 class StaticObstacleSpawn(OccupancyPattern):
-    def __init__(self, name: str, spawnCountdown: int, nrSpawns: int) -> None:
+    def __init__(self, name: str, spawnCountdown: int, loc: tuple[int,int]) -> None:
         super().__init__(name, spawnCountdown)
+        self.loc = loc
+
+    def spawn(self, arena: OccupiedArena) -> list[Occupant]:
+        if arena.safeZoneOccupied(arena.locations[self.loc]):
+            raise SpawnException(f'Could not spawn static obstacle {self.name} in occupied {str(self.loc)}')
+        return [StaticObstacle(arena.locations[self.loc], self.name)]
+
+
+class RandomStaticObstacleSpawn(StaticObstacleSpawn):
+    def __init__(self, name: str, spawnCountdown: int, nrSpawns: int) -> None:
+        super().__init__(name, spawnCountdown, None)
         self.nrSpawns = nrSpawns
 
     def spawn(self, arena: OccupiedArena) -> list[Occupant]:
         spawns = []
-        for i in range(0, self.nrSpawns):
-            loc = random.choice(arena.unoccupiedLocations())
+        for _ in range(0, self.nrSpawns): # TODO make safe
+            loc = random.choice(arena.safeLocations())
             spawns.append(StaticObstacle(loc))
         return spawns
-
 
 class AgentSpawn(OccupancyPattern):
     def __init__(self, name: str, initTime: int, startLocs: list[tuple[int,int]], orientation: Orientation, target: tuple[int,int], zoneLayout: dict[Any, list[tuple[int,int]]], controller) -> None:
@@ -89,30 +98,11 @@ class AgentSpawn(OccupancyPattern):
         # Agent()
         startLocations = list(filter(lambda a: not a.occupied(), [arena.locations[loc] for loc in self.startLocs]))
         startLocation = startLocations[random.randrange(0, len(startLocations))]
-        agent = Agent(startLocation, self.orientation, ExtOverlapZoneSensedArea(self.zoneLayout), self.controller)
+        agent = Agent(startLocation, self.name, self.orientation, ExtOverlapZoneSensedArea(self.zoneLayout), self.controller)
         agent.move(startLocation, arena)
         return [agent]
 
         
 
-
-
-class TemporalController(Temporal): # TODO just merge into Task,
-    def __init__(self, name: str, patterns: list[OccupancyPattern], defaultAgent: AgentSpawn, arena: Arena):
-        super().__init__(name)
-        self.patterns = patterns
-        self.defaultAgent = defaultAgent.spawn(arena)[0]
-        self.occupants = []
-
-    def populate(self, arena: Arena) -> HistoryItem:
-        spawned = []
-        for pattern in self.patterns:
-            spawned.extend(pattern.spawnAttempt(arena))
-        return SpawnHistoryItem([occ.name for occ in spawned])
-
-    def next(self, arena: Arena) -> HistoryItem:
-        log = self.populate(arena)
-        # TODO also other moves
-        return log
 
 

@@ -3,8 +3,8 @@ import regex
 
 from appControl.exceptions import MapException
 from model.runner.controller import Control
-from model.simulation.obstacles import OccupiedArena
-from model.simulation.occupancyPattern import AgentSpawn, Path, StaticObstacleSpawn, TemporalController
+from model.simulation.obstacles import Occupant, OccupiedArena
+from model.simulation.occupancyPattern import AgentSpawn, Path, RandomStaticObstacleSpawn, StaticObstacleSpawn
 from model.space.extOverlapSpace import ExtOverlapZoneType
 from model.space.locations import AbsoluteLocation, LocationType
 from model.space.spaceBasics import Arena, orientationFromString
@@ -16,8 +16,9 @@ coordSplitRegex = r'(?P<y>\d+\s?)+,\s?(?P<x>\d+\s?)+;'
 
 agentCompSplitRegex = r'(?:agent (?P<agentName>\w+):\ntime (?P<time>\d+); start (?P<start>\[(?:\(\d+,\d+\),?)+\]); heading (?P<heading>\w+); target (?P<target>\(\d+,\d+\)); rfp (?P<rfp>\[(?:\(\d+,\d+\),?)+\]))'
 
+staticObstacleSplitRegex = r'static obstacle (?P<name>\w+):\nstart (?P<start>\d+); loc \((?P<x>\d+),(?P<y>\d+)\);'
 
-def parseOccupiedMap(arenaMap: str, controller) -> tuple[Arena,TemporalController]:
+def parseOccupiedMap(arenaMap: str, controller) -> tuple[Arena,list[Occupant]]:
     # TODO agent spawn
     [plan, arenaMap] = arenaMap.split('plan end', 1)
     locations = plan2Locations(plan.split('\n'))
@@ -26,13 +27,14 @@ def parseOccupiedMap(arenaMap: str, controller) -> tuple[Arena,TemporalControlle
     pathMaps = regex.findall(pathSplitRegex, arenaMap)
     paths = pathMaps2paths(pathMaps)
     
-    staticObstacles = StaticObstacleSpawn('static_obstacles', 0, 3) #  TODO move to map
+    staticObstacleMaps = regex.findall(staticObstacleSplitRegex, arenaMap)
+    staticObstacles = staticObstacleMaps2staticObstacles(staticObstacleMaps)
+    # staticObstacles = RandomStaticObstacleSpawn('static_obstacles', 0, 3) #  TODO move to map
     
     agentMaps = regex.findall(agentCompSplitRegex, arenaMap)
     agentSpawns = agentMaps2Agents(agentMaps)
 
-    temporalController = TemporalController('temporal_controller', paths + [staticObstacles] + agentSpawns, agentSpawns[0], arena)
-    return (arena, temporalController)
+    return (arena, paths + staticObstacles + agentSpawns)
 
 def pathMaps2paths(pathMaps: list[tuple[str,str]]) -> list[Path]:
     paths = []
@@ -48,7 +50,7 @@ def pathMaps2paths(pathMaps: list[tuple[str,str]]) -> list[Path]:
         paths.append(Path(locs, repeat, name, 0))
     return paths
 
-def agentMaps2Agents(agentMaps) -> list[AgentSpawn]:
+def agentMaps2Agents(agentMaps: list[tuple[str,str,str,str,str,str]]) -> list[AgentSpawn]:
     # sensedArea = ExtOverlapZoneSensedArea({
     #     ExtOverlapZoneType.RF_P: [], # no cars may cross from right on this map type
     # })
@@ -66,6 +68,12 @@ def agentMaps2Agents(agentMaps) -> list[AgentSpawn]:
                                       { ExtOverlapZoneType.RF_P: [tuple(loc) for loc in json.loads(rfp)]},
                                       Control(OverlapControl())))
     return agentSpawns
+
+def staticObstacleMaps2staticObstacles(staticObstacleMaps: list[tuple[str,str,str,str]]) -> list[StaticObstacleSpawn]:
+    spawns = []
+    for (name, initTime, x, y) in staticObstacleMaps:
+        spawns.append(StaticObstacleSpawn(name, int(initTime), (int(x),int(y))))
+    return spawns
 
 def plan2Locations(lines: list[str]) -> dict[tuple[int, int], AbsoluteLocation]:
     locations = {}

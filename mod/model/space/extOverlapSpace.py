@@ -1,12 +1,10 @@
 
-import copy
-import random
+
 from enum import Enum
-from typing import Any
 
 from appControl.exceptions import MapException
 from model.simulation.obstacles import MovingObstacle, Occupant
-from model.space.spaceBasics import Action, Arena, LocationType, AbsoluteLocation, Orientation, SensedArea, Trajectory, Zone, changesPerpendicularLateral, trajectoryFrom2Orientation, trajectoryFromChangeOrientation
+from model.space.spaceBasics import Action, Arena, LocationType, AbsoluteLocation, Orientation, SensedArea, Trajectory, Zone, changesPerpendicularLateral, trajectoryFrom2Orientation
 from model.task import Agent
 
 
@@ -157,7 +155,7 @@ class ExtOverlapZone(Zone):
 
 class ExtOverlapZoneSensedArea(SensedArea):
     def __init__(self, zoneLayout: dict[ExtOverlapZoneType, list[tuple[int,int]]]) -> None:
-        self.zoneLayout = {
+        self._zoneLayout = {
             ExtOverlapZoneType.LFF:  [(-1,3), (-1,4)],
             ExtOverlapZoneType.LF:   [(-1,1), (-1,2)],
             ExtOverlapZoneType.LB:   [(-1,0), (-1,-1)],
@@ -167,10 +165,10 @@ class ExtOverlapZoneSensedArea(SensedArea):
             ExtOverlapZoneType.RF_P: [],
         }
         for k,v in zoneLayout.items():
-            self.zoneLayout[k] = v
+            self._zoneLayout[k] = v
 
         self.zones = {}
-        for k in self.zoneLayout:
+        for k in self._zoneLayout:
             self.zones[k] = ExtOverlapZone(k, [])
 
     def agentZone(self) -> ExtOverlapZone:
@@ -196,7 +194,7 @@ class ExtOverlapZoneSensedArea(SensedArea):
         cy = curLoc.y
 
         # locations belonging to each zone expressed as distance from curLoc
-        distances = {k: [changesPerpendicularLateral(curDir, item) for item in v] for k, v in self.zoneLayout.items()}
+        distances = {k: [changesPerpendicularLateral(curDir, item) for item in v] for k, v in self._zoneLayout.items()}
         
         for k, v in distances.items():
             try:

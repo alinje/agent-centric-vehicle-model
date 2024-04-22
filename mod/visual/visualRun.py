@@ -1,5 +1,4 @@
 from __future__ import annotations
-from abc import ABC
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtGui import QPalette, QColor, QPixmap
 from appControl.exceptions import ControllerException, MapException
@@ -14,15 +13,16 @@ from model.task import Agent, Task
 
 
 class VehiclePane(QtWidgets.QWidget):
-    def __init__(self, task: Task):
+    def __init__(self, task: Task, focusedAgent: Agent):
         super().__init__()
         self.task = task
+        self.focusedAgent = focusedAgent
         self.arena = task.arena
 
         self.windowTitle = 'yodeli'
         self.historyPane = self.createHistoryPane()
-        self.arenaPane = self.createArenaPane(self.arena, self.task.agent.sensedArea, 100, 800)
-        self.sensorPane, wrapSensorAreaPane = self.createSensorAreaPane(self.task.agent.sensedArea, 150, 200)
+        self.arenaPane = self.createArenaPane(self.arena, self.focusedAgent.sensedArea, 100, 800)
+        self.sensorPane, wrapSensorAreaPane = self.createSensorAreaPane(self.focusedAgent.sensedArea, 150, 200)
         self.toolBar = self.createToolBar()
 
         self.layout = QtWidgets.QGridLayout(self)
@@ -180,18 +180,33 @@ class VehiclePane(QtWidgets.QWidget):
 
         for [p, py, px, ph, pw] in zoneDict.values():
             layout.addWidget(p, py, px, ph, pw)
-        rfpLocs = initSensorArea.zoneLayout[ExtOverlapZoneType.RF_P]
+        rfpLocs = initSensorArea._zoneLayout[ExtOverlapZoneType.RF_P]
         rfpLocStr = f'Custom sensor zone at [{', '.join([f'p{loc[0]}l{loc[1]}' for loc in rfpLocs])}]'
         layout.addWidget(QtWidgets.QLabel(rfpLocStr), 0, 3, 1, 1)
 
         self.zoneDict = {k: v[0] for k, v in zoneDict.items()}
         
+    def createSensorArea(self, layout: QtWidgets.QGridLayout):
+        areaSize = self.focusedAgent.sensedArea.zoneLayoutSize()
+        layout.rowCount = areaSize[1]+1
+        layout.columnCount = areaSize[0]+1
+        layout.setVerticalSpacing(2)
+        layout.setHorizontalSpacing(2)
+
+        zones = self.focusedAgent.sensedArea.zones
+        zoneLayout = self.focusedAgent.sensedArea.zoneLayout
+        zoneCover = self.focusedAgent.sensedArea.zoneCoverZeroIndexed()
+        self.zoneDict = {k: (ColoredPane.zonePane(zones[k], self.focusedAgent.orientation)) for k, locs in zoneLayout.items()}
+        for k, v in self.zoneDict.items():
+            cover = zoneCover[k]
+            layout.addWidget(v, cover[0][1], cover[0][0], (cover[1][1])-(cover[0][1])+1, (cover[1][0])-(cover[0][0])+1)
+
 
     def createSensorAreaPane(self, initSensorArea, h, w):
         widget = QtWidgets.QWidget()
         layout = QtWidgets.QGridLayout()
         widget.setLayout(layout)
-        self.createExtOverlapSensorArea(layout, initSensorArea)
+        self.createSensorArea(layout)
         
 
         # a wrapper that gives context to the sensor map
@@ -238,7 +253,7 @@ class VehiclePane(QtWidgets.QWidget):
 
         # mark new position on arena pane
         for loc, tile in self.arenaDict.items():
-            tile.setProperty("highlighted", self.task.agent.sensedArea.inSensedArea(loc))
+            tile.setProperty("highlighted", self.focusedAgent.sensedArea.inSensedArea(loc))
             tile.setStyleSheet(f'background-color: {Location2Color(loc).name()}')
 
         
@@ -252,9 +267,9 @@ class VehiclePane(QtWidgets.QWidget):
 
         # # show new sensor pane
         # for t, tile in self.zoneDict.items():
-        #     zone = task.agent.sensedArea.zones[t]
-        #     tile.changeZoneColor(zone, task.agent)
-        self.drawSensorPane(self.task.agent)
+        #     zone = agent.sensedArea.zones[t]
+        #     tile.changeZoneColor(zone, agent)
+        self.drawSensorPane(self.focusedAgent)
 
         self.toolBarNextBut.setEnabled(True)
         self.toolBarNextBut.setText('>')
@@ -266,7 +281,7 @@ class VehiclePane(QtWidgets.QWidget):
     def drawSensorPane(self, agent: Agent) -> None:
         # show new sensor pane
         for t, tile in self.zoneDict.items():
-            zone = self.task.agent.sensedArea.zones[t]
+            zone = self.focusedAgent.sensedArea.zones[t]
             tile.changeZoneColor(zone, agent)
 
 

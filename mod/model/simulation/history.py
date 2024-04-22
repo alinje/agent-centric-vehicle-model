@@ -9,8 +9,8 @@ class History(object):
         self.log = []
         self.time = 0
   
-    def addToHistory(self, logs: list[HistoryItem]) -> None:
-        self.time += 1
+    def addToHistory(self, logs: list[HistoryItem], timeInc: int = 1) -> None:
+        self.time += timeInc
         self.log.extend(logs)
 
 

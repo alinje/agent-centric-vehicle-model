@@ -18,13 +18,13 @@ def showGraphicView(mapFileName, controller):
         controllerFileName (string): Path to file representing a controller."""
     arenaMap = readMap(mapFileName)
     control = Control(controller)
-    [arena, temporalController] = parseOccupiedMap(arenaMap, control)
+    [arena, occupants] = parseOccupiedMap(arenaMap, control)
 
-    task = Task(arena, temporalController)
+    task = Task(arena, occupants)
     task.start()
     
     app = QApplication([])
-    widget = VehiclePane(task)
+    widget = VehiclePane(task, task.agents[0])
     widget.resize(800, 500)
     widget.show()
 

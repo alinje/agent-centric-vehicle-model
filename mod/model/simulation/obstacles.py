@@ -14,17 +14,17 @@ class Temporal(ABC):
 
 
 class Occupant(ABC): # TODO move 'move' here?
-    def __init__(self, loc: AbsoluteLocation, name: str = 'NaN') -> None:
+    def __init__(self, loc: AbsoluteLocation, name: str = None) -> None:
         self.loc = loc
-        self.name = name
+        self.name = name if str != None else str(self.__class__)
         if loc != None:
             loc.receiveOccupant(self)
 
     def __str__(self) -> None:
-        return f'{self.__class__} in {str(self.loc)}'
+        return f'{self.name} in {str(self.loc)}'
 
-    # def occupancy(self) -> LocationType:
-    #     pass
+    def disturb(self) -> None:
+        raise NotImplementedError()
 
     # def occupyLocation(self, location) -> None:
     #     if location.occupied():
@@ -34,9 +34,6 @@ class Occupant(ABC): # TODO move 'move' here?
 
 class StaticObstacle(Occupant):
     pass
-    # def __init__(self, loc: AbsoluteLocation, name: str = 'NaN') -> None:
-    #     super().__init__(loc, name)
-    #     self.name = 
 
 class MovingObstacle(Occupant, Temporal):
     def __init__(self, loc: AbsoluteLocation, path: Path, arena: Arena, name: str) -> None:
@@ -59,14 +56,6 @@ class MovingObstacle(Occupant, Temporal):
 class OccupiedArena(Arena):
     def __init__(self, locations: dict[tuple[int, int], AbsoluteLocation]) -> None:
         super().__init__(locations)
-        # self.un
-
-    # def temporalOccupants(self) -> list[Occupant]:
-    #     occupants = []
-    #     for loc in self.locations.values():
-    #         if (loc.occupant != None) and isinstance(loc.occupant, Temporal):
-    #             occupants.append(loc.occupant)
-    #     return occupants
     
     unoccupiedBuffer = None
     def unoccupiedLocations(self) -> list[AbsoluteLocation]:
@@ -75,10 +64,8 @@ class OccupiedArena(Arena):
         
         self.unoccupiedBuffer = [loc for loc in self.locations.values() if not loc.occupied()]
         return self.unoccupiedBuffer
+    
+    def safeLocations(self) -> list[AbsoluteLocation]:
+        return [self.safeZoneOccupied(loc) for loc in self.unoccupiedLocations()]
 
-    # def next(self, arena: Arena = None) -> None:
-    #     logs = []
-    #     for occupant in self.temporalOccupants():
-    #         logs.append(occupant.next(self))
-    #     return EnvironmentMoveItem(logs)
 

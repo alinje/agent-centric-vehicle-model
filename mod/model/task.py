@@ -1,54 +1,72 @@
-from abc import ABC
-import random
+
 from typing import Any
-
-from appControl.exceptions import ControllerException
 from model.simulation.agent import Agent
-from model.simulation.obstacles import Occupant
-from model.simulation.history import History, HistoryItem
-from model.space.spaceBasics import AbsoluteLocation, Action, Arena, LocationType, Orientation, SensedArea, changesPerpendicularLateral, relativeAction
-
-
+from model.simulation.obstacles import Temporal
+from model.simulation.history import AgentMoveItem, EnvironmentMoveItem, History, HistoryItem, SpawnHistoryItem
+from model.space.spaceBasics import Arena
 
 
         
 class Task(object):
     """
     Attributes:
-        agent (Agent): Agent of the task.
+        agents (list[Agent]): Agents controlled by a logical controller.
+        environment (list[Temporal]): Temporal factors of the environments.
         arena (Arena): Arena of the task.
         completed (bool): Whether the task is completed.
         history (list[Action]): All actions taken.
     """
-    def __init__(self, arena: Arena, temporalController) -> None:
+    def __init__(self, arena: Arena, patterns: list[Any]) -> None:
 
         self.arena = arena
-        self.temporalController = temporalController
+        self.patterns = patterns
         # self.agent = temporalController.defaultAgent#Agent(None, Orientation.EAST, sensedArea) # TODO multiple agents
+        self.agents: list[Agent] = []
+        self.environment: list[Temporal] = []
         self.history = History()
        
 
-    def start(self, startLocation: AbsoluteLocation=None) -> None:
-        self.temporalController.populate(self.arena)
-        self.agent = self.temporalController.defaultAgent
-        # if startLocation == None:
-        #     startLocations = list(filter(lambda a: not a.occupied(), self.arena.getStartLocations()))
-        #     startLocation = startLocations[random.randrange(0, len(startLocations))]
-        # if self.arena.locationType(startLocation.x, startLocation.y) != LocationType.START:
-        #     raise Exception()
-        # self.agent.move(startLocation, self.arena)
+    def start(self) -> None:
+        self.populate()
 
+    def populate(self) -> None:
+        """Plant occupancy patterns as temporals if their countdown suggests so.
+        """
+        spawned = []
+        rem = []
+        for pattern in self.patterns:
+            possSpawned = pattern.spawnAttempt(self.arena)
+            if possSpawned != None:
+                spawned.extend(possSpawned)
+                self.patterns.remove(pattern)
+                
+
+        # TODO type information should not have to be retrieved
+        self.environment.extend([spawn for spawn in spawned if isinstance(spawn, Temporal) and not isinstance(spawn, Agent)])
+        self.agents.extend([spawn for spawn in spawned if isinstance(spawn, Agent)])
+
+        log = SpawnHistoryItem([occ.name for occ in spawned])
+        self.history.addToHistory([log], 0)
+    
     def nextEnvironment(self) -> HistoryItem:
-        return self.arena.next(self.arena) # probably should be from list of temporals, not this arena that also doesn't need itself as argument
+        logs = []
+        for envItem in self.environment:
+            logs.append(envItem.next(self.arena))
+        return EnvironmentMoveItem(logs)
 
-    def nextAgent(self) -> HistoryItem:
-        return self.agent.next(self.arena)
+
+    def nextAgent(self) -> list[HistoryItem]:
+        logs = []
+        for agent in self.agents:
+            logs.append(agent.next(self.arena))
+        return logs
 
     def next(self) -> None:
-        agentLog = self.nextAgent()
+        agentLogs = self.nextAgent()
+        spawnLog = self.populate()
         envLog1 = self.nextEnvironment() # TODO twice!!
         # envLog2 = self.nextEnvironment()
-        self.history.addToHistory([agentLog, envLog1])
+        self.history.addToHistory(agentLogs + [spawnLog, envLog1])
         # self.history.addToHistory([envLog2])
 
     def nextHalfStep(self) -> None:

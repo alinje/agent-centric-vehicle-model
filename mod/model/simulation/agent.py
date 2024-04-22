@@ -12,10 +12,10 @@ class Agent(Occupant, Temporal):
         curLoc (AbsoluteLocation): Current location.
         orientation (Orientation): Current orientation.
         sensedArea (SensedArea): Area of all locations currently covered by vehicle sensors.)"""
-    def __init__(self, loc: AbsoluteLocation, orientation: Orientation, zoneLayout: SensedArea, controller: Control) -> None:
-        super().__init__(loc)
+    def __init__(self, loc: AbsoluteLocation, name: str, orientation: Orientation, sensedArea: SensedArea, controller: Control) -> None:
+        super().__init__(loc, name)
         self.orientation = orientation
-        self.sensedArea = zoneLayout
+        self.sensedArea = sensedArea
         self.controller = controller
 
     # TODO these have unclear separation of concern, clean
@@ -42,7 +42,7 @@ class Agent(Occupant, Temporal):
             act = self.controller.move(**inputs)
         except ValueError as e:
             print(e)
-            raise ControllerException(f"Controller has no defined output for inputs in state {self.controller.state}.") from e
+            raise ControllerException(f"{self.name} controller has no defined output for inputs in state {str(self.controller.state)}.") from e
 
         self.applyAction(act, arena)
         log = AgentMoveItem(act, preLoc, self.loc, str(self))

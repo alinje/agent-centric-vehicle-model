@@ -14,6 +14,10 @@ class Control(object):
     def move(self, **inputs) -> Action:
         rawOutput = self.controller.move(**inputs)
         return self.output2ActionEnum(rawOutput)
+    
+    @property
+    def state(self) -> int:
+        return self.controller.state
 
     # TODO zonelayout should probably be here!!
 

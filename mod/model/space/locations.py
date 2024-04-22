@@ -16,7 +16,7 @@ class LocationType(Enum):
     AGENT = 7
     VISITED = 8
 
-class Location(ABC):
+class Location(ABC): # TODO should all of these methods be here and not in AbsoluteLocation?
     def __init__(self, locationType: LocationType) -> None:
         self.locationType = locationType
         self.occupant = None
@@ -49,7 +49,13 @@ class AbsoluteLocation(Location):
         self.y = y
 
     def __str__(self) -> str:
-        return f'Location with carteesian coordinates ({self.x},{self.y}), of type {self.locationType}'
+        return f'carteesian location ({self.x},{self.y}), of type {self.locationType}'
+    
+    def __repr__(self) -> str:
+        return f'carteesian location ({self.x},{self.y}), of type {self.locationType}' + (str(self.occupant) if self.occupant != None else '')
+
+    # def fromRelative(rel: RelativeLocation) -> AbsoluteLocation:
+    #     raise NotImplementedError()
 
 class RelativeLocation(Location):
     """
