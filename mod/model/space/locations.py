@@ -11,10 +11,10 @@ class LocationType(Enum):
     TARGET = 2
     OFFROAD = 3
     START = 4
-    CLEARED_ROAD = 5
-    OBSTACLE = 6
-    AGENT = 7
-    VISITED = 8
+
+    def __str__(self) -> str:
+        return self.name.lower()
+
 
 class Location(ABC): # TODO should all of these methods be here and not in AbsoluteLocation?
     def __init__(self, locationType: LocationType) -> None:
@@ -23,7 +23,7 @@ class Location(ABC): # TODO should all of these methods be here and not in Absol
 
     def occupied(self) -> bool:
         return (self.occupant != None) and (self.locationType != LocationType.OFFROAD)
-    # TODO wait why are these not the same
+
     def unpassable(self) -> bool:
         return self.occupied() or self.locationType == LocationType.OFFROAD
     

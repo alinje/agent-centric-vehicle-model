@@ -4,7 +4,7 @@ from PySide6.QtGui import QPalette, QColor, QPixmap
 from appControl.exceptions import ControllerException, MapException
 
 from model.simulation.obstacles import MovingObstacle, StaticObstacle
-from model.simulation.history import HistoryItem
+from model.simulation.history import History, HistoryItem
 from model.space.extOverlapSpace import ExtOverlapZoneSensedArea, ExtOverlapZoneType
 from model.space.locations import AbsoluteLocation, Location
 from model.space.overlapSpace import OverlapZoneType
@@ -35,7 +35,7 @@ class VehiclePane(QtWidgets.QWidget):
         self.layout.setRowStretch(0, 10)
         self.layout.setRowStretch(1, 10)
         self.layout.setRowStretch(2, 2)
-        self.layout.setColumnStretch(0, 2)
+        self.layout.setColumnStretch(0, 1)
         self.layout.setColumnStretch(1, 1)
 
         self.loadStyleSheet('visual\\style.qss')
@@ -71,15 +71,20 @@ class VehiclePane(QtWidgets.QWidget):
         return widget
     
     def createHistoryPane(self):
+        self.historyModel = HistoryModel(history=self.task.history)
+
         layout = QtWidgets.QVBoxLayout()
         self.paneTxt = QtWidgets.QLabel("timestep 0", alignment=QtCore.Qt.AlignTop)
         layout.addWidget(self.paneTxt)
         self.historyList = QtWidgets.QListWidget()
+        self.historyList.setObjectName("historyList")
         layout.addWidget(self.historyList)
+
         widget = QtWidgets.QWidget()
         widget.setLayout(layout)
         widget.setObjectName("historyPane")
         widget.setFixedHeight(400)
+        
         return widget
 
 
@@ -118,73 +123,6 @@ class VehiclePane(QtWidgets.QWidget):
         widget.setFixedHeight(h+50)
         return widget
     
-    def createWingedSensorArea(self, layout, initSensorArea, h, w):
-        layout.rowCount=3
-        layout.columnCount=5
-        layout.setVerticalSpacing(2)
-        layout.setHorizontalSpacing(2)
-        for i in range(0, layout.columnCount):
-            layout.setColumnMinimumWidth(i, w/3)
-        for i in range(0, layout.rowCount):
-            layout.setRowMinimumHeight(i, h/3)
-
-        # create the individual colored cards
-        for loc in initSensorArea.locations.values():
-            layout.addWidget(
-                ColoredPane(Location2BluntColor(loc)),
-                2-loc.x,
-                loc.y
-            )
-
-    def createOverlapSensorArea(self, layout, initSensorArea, h, w):
-        layout.rowCount=5
-        layout.columnCount=3
-        layout.setVerticalSpacing(2)
-        layout.setHorizontalSpacing(2)
-        # for i in range(0, layout.columnCount):
-        #     layout.setColumnStretch(i, 1)
-        # for i in range(0, layout.rowCount):
-        #     layout.setRowMinimumHeight(i, 1)
-
-        # create the individual colored cards
-        zoneDict = {
-            OverlapZoneType.LF: (ColoredPane(Location2BluntColor(initSensorArea.zones[OverlapZoneType.LF])), 1, 0, 2, 1),
-            OverlapZoneType.LB: (ColoredPane(Location2BluntColor(initSensorArea.zones[OverlapZoneType.LB])), 3, 0, 2, 1),
-            OverlapZoneType.AF: (ColoredPane(Location2BluntColor(initSensorArea.zones[OverlapZoneType.AF])), 0, 1, 2, 1),
-            OverlapZoneType.AA: (ColoredPane(Location2BluntColor(initSensorArea.zones[OverlapZoneType.AA])), 2, 1, 2, 1),
-            OverlapZoneType.RF: (ColoredPane(Location2BluntColor(initSensorArea.zones[OverlapZoneType.RF])), 1, 2, 2, 1),
-            OverlapZoneType.RB: (ColoredPane(Location2BluntColor(initSensorArea.zones[OverlapZoneType.RB])), 3, 2, 2, 1),
-        }
-
-        for [p, py, px, ph, pw] in zoneDict.values():
-            layout.addWidget(p, py, px, ph, pw)
-
-        self.zoneDict = {k: v[0] for k, v in zoneDict.items()}
-
-    def createExtOverlapSensorArea(self, layout: QtWidgets.QGridLayout, initSensorArea: ExtOverlapZoneSensedArea):
-        layout.rowCount=6
-        layout.columnCount=4
-        layout.setVerticalSpacing(2)
-        layout.setHorizontalSpacing(2)
-
-        # create the individual colored cards
-        zoneDict = {
-            ExtOverlapZoneType.LFF:  (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.LFF] , Orientation.EAST), 0, 0, 2, 1), # TODO this should just not be created manually
-            ExtOverlapZoneType.LF:   (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.LF]  , Orientation.EAST),  2, 0, 2, 1),
-            ExtOverlapZoneType.LB:   (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.LB]  , Orientation.EAST),  4, 0, 2, 1),
-            ExtOverlapZoneType.AF:   (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.AF]  , Orientation.EAST),  1, 1, 2, 1),
-            ExtOverlapZoneType.AA:   (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.AA]  , Orientation.EAST),  3, 1, 2, 1),
-            ExtOverlapZoneType.RF:   (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.RF]  , Orientation.EAST),  2, 2, 2, 1),
-            ExtOverlapZoneType.RF_P: (ColoredPane.zonePane(initSensorArea.zones[ExtOverlapZoneType.RF_P], Orientation.EAST), 1, 3, 1, 1),
-        }
-
-        for [p, py, px, ph, pw] in zoneDict.values():
-            layout.addWidget(p, py, px, ph, pw)
-        rfpLocs = initSensorArea._zoneLayout[ExtOverlapZoneType.RF_P]
-        rfpLocStr = f'Custom sensor zone at [{', '.join([f'p{loc[0]}l{loc[1]}' for loc in rfpLocs])}]'
-        layout.addWidget(QtWidgets.QLabel(rfpLocStr), 0, 3, 1, 1)
-
-        self.zoneDict = {k: v[0] for k, v in zoneDict.items()}
         
     def createSensorArea(self, layout: QtWidgets.QGridLayout):
         areaSize = self.focusedAgent.sensedArea.zoneLayoutSize()
@@ -199,7 +137,7 @@ class VehiclePane(QtWidgets.QWidget):
         self.zoneDict = {k: (ColoredPane.zonePane(zones[k], self.focusedAgent.orientation)) for k, locs in zoneLayout.items()}
         for k, v in self.zoneDict.items():
             cover = zoneCover[k]
-            layout.addWidget(v, cover[0][1], cover[0][0], (cover[1][1])-(cover[0][1])+1, (cover[1][0])-(cover[0][0])+1)
+            layout.addWidget(v, layout.rowCount-(cover[0][1]), cover[0][0], (cover[1][1])-(cover[0][1])+1, (cover[1][0])-(cover[0][0])+1)
 
 
     def createSensorAreaPane(self, initSensorArea, h, w):
@@ -258,8 +196,9 @@ class VehiclePane(QtWidgets.QWidget):
 
         
         self.paneTxt.setText(f'timestep {self.task.history.time}')
-        newHistoryLog = HistoryListItem(self.task.history.log[-1])
+        newHistoryLog = HistoryListItem(self.task.history.lastRecord())
         self.historyList.addItem(newHistoryLog)
+        self.historyList.scrollToBottom()
 
         # I don't know why this needs to be reloaded, but otherwise highlights won't update
         self.loadStyleSheet('visual\\style.qss')
@@ -312,6 +251,17 @@ class MapTile(QtWidgets.QFrame):
     def __init__(self, loc: AbsoluteLocation):
         super().__init__()
 
+class HistoryModel(QtCore.QAbstractListModel):
+    def __init__(self, *args, history: History, **kwargs):
+        super(HistoryModel, self).__init__(*args, **kwargs)
+        self.history = history
+
+    def data(self, index, role):
+        if role == QtCore.Qt.DisplayRole:
+            return self.history.getRecord(index)
+        
+    def rowCount(self):
+        return len(self.history.log)
 
 class HistoryListItem(QtWidgets.QListWidgetItem):
     def __init__(self, historyItem: HistoryItem) -> None:

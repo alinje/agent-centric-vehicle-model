@@ -13,8 +13,18 @@ QWidget#historyPane {
     border-color: #393E41;
 }
 
+QWidget#historyList {
+    background-color: #D3D0CB;
+    alternate-background-color: #E7E5DF;
+    selection-background-color: #d3d0cb;
+    border-style: ridge;
+    border-width: 1px;
+    border-color: #d3d0cb;
+}
+
 QListWidgetItem {
-    background-color: #e7e5df;
+    text-wrap: pretty;
+    
 
 }
 

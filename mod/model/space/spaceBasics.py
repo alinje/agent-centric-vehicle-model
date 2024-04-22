@@ -75,13 +75,20 @@ class Zone(ABC):
 class NonInvadingSpace(Zone):
     def __init__(self, loc: Location, arena: Arena):
         self.centerLoc = loc
-        self.locations = [
-            loc,
+        self._distanceOne = [
             arena.locations[(max(0,loc.x-1), loc.y)],
             arena.locations[(min(loc.x+1,arena.getWidth()-1), loc.y)],
             arena.locations[(loc.x, max(0,loc.y-1))],
             arena.locations[(loc.x, min(arena.getHeight()-1,loc.y+1))],
         ]
+
+    @property
+    def locations(self) -> list[AbsoluteLocation]:
+        return [self.centerLoc] + self._distanceOne
+
+    def occupied(self) -> bool:
+        return (self.centerLoc.occupied() or 
+                any([loc.occupant != None and loc.occupant.speed > 0 for loc in self._distanceOne]))
 
 
 

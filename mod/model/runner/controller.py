@@ -8,16 +8,28 @@ from model.space.spaceBasics import Action
 
 
 class Control(object):
+    """Layer between TuLiP generated Python controller and simulation program. 
+    
+    Translates inputs and outputs to/from strings and may reset the controller."""
     def __init__(self, controller):
-        self.controller = controller
+        self._controller = controller
+        self._initState = self._controller.state
 
     def move(self, **inputs) -> Action:
-        rawOutput = self.controller.move(**inputs)
+        rawOutput = self._controller.move(**inputs)
         return self.output2ActionEnum(rawOutput)
     
     @property
     def state(self) -> int:
-        return self.controller.state
+        return self._controller.state
+    
+    def state(self, setCode) -> None:
+        """
+        Arguments:
+            setCode (int): If 1: reset to initial state."""
+        if setCode == 1:
+            self._controller.state = self._initState
+            return
 
     # TODO zonelayout should probably be here!!
 

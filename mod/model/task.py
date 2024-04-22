@@ -27,26 +27,27 @@ class Task(object):
        
 
     def start(self) -> None:
-        self.populate()
+        log = self.populate()
+        self.history.addToHistory([log], 0)
 
-    def populate(self) -> None:
+    def populate(self) -> HistoryItem:
         """Plant occupancy patterns as temporals if their countdown suggests so.
         """
         spawned = []
         rem = []
         for pattern in self.patterns:
             possSpawned = pattern.spawnAttempt(self.arena)
-            if possSpawned != None:
+            if len(possSpawned) > 0:
                 spawned.extend(possSpawned)
-                self.patterns.remove(pattern)
+                rem.append(pattern)
+        self.patterns[:] = [pattern for pattern in self.patterns if pattern not in rem]
                 
 
         # TODO type information should not have to be retrieved
         self.environment.extend([spawn for spawn in spawned if isinstance(spawn, Temporal) and not isinstance(spawn, Agent)])
         self.agents.extend([spawn for spawn in spawned if isinstance(spawn, Agent)])
 
-        log = SpawnHistoryItem([occ.name for occ in spawned])
-        self.history.addToHistory([log], 0)
+        return SpawnHistoryItem([occ.name for occ in spawned])
     
     def nextEnvironment(self) -> HistoryItem:
         logs = []

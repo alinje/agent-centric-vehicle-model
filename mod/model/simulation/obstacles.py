@@ -1,14 +1,14 @@
 from __future__ import annotations
 from abc import ABC
 
-from model.simulation.history import EnvironmentMoveItem, HistoryItem
+from model.simulation.history import HistoryItem, MovingObstacleItem
 from model.space.spaceBasics import AbsoluteLocation, Arena, LocationType, Orientation, orientationFromChange
 
 class Temporal(ABC):
     def __init__(self, name: str='NaN') -> None:
         self.name = name
 
-    def next(self, arena: Arena) -> HistoryItem:# TODO just kwargs, args?
+    def next(self, arena: Arena) -> HistoryItem:
         pass
 
 
@@ -25,6 +25,10 @@ class Occupant(ABC): # TODO move 'move' here?
 
     def disturb(self) -> None:
         raise NotImplementedError()
+    
+    @property
+    def speed(self) -> int:
+        return self._speed
 
     # def occupyLocation(self, location) -> None:
     #     if location.occupied():
@@ -33,16 +37,18 @@ class Occupant(ABC): # TODO move 'move' here?
 
 
 class StaticObstacle(Occupant):
-    pass
+    _speed = 0
 
 class MovingObstacle(Occupant, Temporal):
+    _speed = 1
     def __init__(self, loc: AbsoluteLocation, path: Path, arena: Arena, name: str) -> None:
         super().__init__(loc, name)
         self.path = path
         self.pathIndex = 0
         self.orientation = path.orientationFrom(arena, self.pathIndex)
 
-    def next(self, arena: Arena) -> None:
+    def next(self, arena: Arena) -> HistoryItem:
+        preLoc = self.loc
         (nextOnPath, suggestedPathIndex) = self.path.moveSuggestion(self.pathIndex, arena)
         if nextOnPath.occupied():
             return
@@ -52,6 +58,7 @@ class MovingObstacle(Occupant, Temporal):
         self.orientation = self.path.orientationFrom(arena, self.pathIndex)
         self.pathIndex = suggestedPathIndex
         # arena[(self.loc.x, self.loc.y)] = 
+        return MovingObstacleItem(self.name, preLoc, self.loc)
 
 class OccupiedArena(Arena):
     def __init__(self, locations: dict[tuple[int, int], AbsoluteLocation]) -> None:

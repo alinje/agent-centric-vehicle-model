@@ -12,6 +12,7 @@ class Agent(Occupant, Temporal):
         curLoc (AbsoluteLocation): Current location.
         orientation (Orientation): Current orientation.
         sensedArea (SensedArea): Area of all locations currently covered by vehicle sensors.)"""
+    _speed = 2
     def __init__(self, loc: AbsoluteLocation, name: str, orientation: Orientation, sensedArea: SensedArea, controller: Control) -> None:
         super().__init__(loc, name)
         self.orientation = orientation
@@ -45,5 +46,8 @@ class Agent(Occupant, Temporal):
             raise ControllerException(f"{self.name} controller has no defined output for inputs in state {str(self.controller.state)}.") from e
 
         self.applyAction(act, arena)
-        log = AgentMoveItem(act, preLoc, self.loc, str(self))
+        log = AgentMoveItem(act, preLoc, self.loc, self.name)
         return log
+    
+    def reset(self) -> bool:
+        self.controller.state = 1
