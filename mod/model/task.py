@@ -2,7 +2,7 @@
 from typing import Any
 from model.simulation.agent import Agent
 from model.simulation.obstacles import Temporal
-from model.simulation.history import AgentMoveItem, EnvironmentMoveItem, History, HistoryItem, SpawnHistoryItem
+from model.simulation.history import EnvironmentMoveItem, History, HistoryItem, SpawnHistoryItem
 from model.space.spaceBasics import Arena
 
 
@@ -20,7 +20,6 @@ class Task(object):
 
         self.arena = arena
         self.patterns = patterns
-        # self.agent = temporalController.defaultAgent#Agent(None, Orientation.EAST, sensedArea) # TODO multiple agents
         self.agents: list[Agent] = []
         self.environment: list[Temporal] = []
         self.history = History()
@@ -73,3 +72,7 @@ class Task(object):
     def nextHalfStep(self) -> None:
         envLog = self.nextEnvironment()
         self.history.addToHistory([envLog])
+
+    def getAgentHistory(self, agent: Agent) -> History:
+        # TODO
+        return self.history

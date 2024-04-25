@@ -31,7 +31,6 @@ def overlapSpaceSpec() -> GRSpec:
             't_r',
             't', # BUG in tulip, should not exist: https://github.com/tulip-control/tulip-control/issues/238
         ],
-        # TODO traffic dir
     }
     
     sys_vars = {
@@ -143,7 +142,6 @@ def overlapSpaceSpec() -> GRSpec:
 
     # if multiple paths are available, agent attempts to approach target
     movePrefsTargetForward = [
-        f''
         f'((! {forwardBlocked}) -> (move = "m_f"))',
         # if target is forward, one should keep right
         f'(({forwardBlocked} && (! {rightForwardShiftBlocked})) -> (move = "m_srf"))',
@@ -177,8 +175,6 @@ def overlapSpaceSpec() -> GRSpec:
     }
 
     pathWillExist = [
-        # with a static left a 
-        # '(olf && (! olff) && (! olb)) -> (! (of && orf))',
         pathExistsGuaranteed,
         
         # space can not be permanently occupied by moving objects

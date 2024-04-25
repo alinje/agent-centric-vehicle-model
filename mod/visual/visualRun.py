@@ -1,4 +1,6 @@
 from __future__ import annotations
+import math
+from typing import Callable
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtGui import QPalette, QColor, QPixmap
 from appControl.exceptions import ControllerException, MapException
@@ -12,8 +14,9 @@ from model.space.spaceBasics import LocationType, Orientation, Zone
 from model.task import Agent, Task
 
 
+# https://coolors.co/393e41-d3d0cb-e7e5df-21897e-8980f5
 class VehiclePane(QtWidgets.QWidget):
-    def __init__(self, task: Task, focusedAgent: Agent):
+    def __init__(self, task: Task, focusedAgent: Agent, dumpFunction: Callable[[Agent], None]):
         super().__init__()
         self.task = task
         self.focusedAgent = focusedAgent
@@ -21,27 +24,32 @@ class VehiclePane(QtWidgets.QWidget):
 
         self.windowTitle = 'yodeli'
         self.historyPane = self.createHistoryPane()
-        self.arenaPane = self.createArenaPane(self.arena, self.focusedAgent.sensedArea, 100, 800)
-        self.sensorPane, wrapSensorAreaPane = self.createSensorAreaPane(self.focusedAgent.sensedArea, 150, 200)
+        self.arenaPane = self.createArenaPane()
+        self.sensorPane, wrapSensorAreaPane = self.createSensorAreaPane()
+        careAreaHistorySplitter = QtWidgets.QSplitter()
+        careAreaHistorySplitter.addWidget(wrapSensorAreaPane)
+        careAreaHistorySplitter.addWidget(self.historyPane)
+        careAreaHistorySplitter.setStretchFactor(0,1)
+        careAreaHistorySplitter.setStretchFactor(1,1)
         self.toolBar = self.createToolBar()
 
         self.layout = QtWidgets.QGridLayout(self)
         self.layout.addWidget(self.arenaPane, 0, 0, 1, 2)
-        self.layout.addWidget(wrapSensorAreaPane, 1, 0, 1, 1)
-        self.layout.addWidget(self.historyPane, 1, 1, 1, 1) 
-        # TODO custom sensor area selection
+        self.layout.addWidget(careAreaHistorySplitter, 1, 0, 1, 2)
         # TODO dump current run
         self.layout.addWidget(self.toolBar, 2, 0, 1, 2)
         self.layout.setRowStretch(0, 10)
         self.layout.setRowStretch(1, 10)
         self.layout.setRowStretch(2, 2)
         self.layout.setColumnStretch(0, 1)
-        self.layout.setColumnStretch(1, 1)
+        self.layout.setColumnStretch(1, 2)
 
         self.loadStyleSheet('visual\\style.qss')
 
         self.toolBarNextBut.clicked.connect(self.nextState)
-        self.toolBarHalfStep.clicked.connect(self.nextHalfState)
+        self.dumpFunction = dumpFunction
+        self.toolBarDumpButton.clicked.connect(self.dump)
+        # self.toolBarHalfStep.clicked.connect(self.nextHalfState)
 
     def loadStyleSheet(self, path):
         with open(path, 'r') as f:
@@ -54,13 +62,13 @@ class VehiclePane(QtWidgets.QWidget):
         layout.setDirection(QtWidgets.QVBoxLayout.Direction.LeftToRight)
 
         self.toolBarLayout = layout
-        self.toolBarHalfStep = QtWidgets.QPushButton('>')
+        # self.toolBarHalfStep = QtWidgets.QPushButton('>')
+        self.toolBarDumpButton = QtWidgets.QPushButton('dump')
         self.toolBarNextBut = QtWidgets.QPushButton('>>')
-        # self.toolBarBfBut = QtWidgets.QPushButton('<')
         self.toolBarInfoLabel = QtWidgets.QLabel("")
 
-        # layout.addWidget(self.toolBarBfBut)
-        layout.addWidget(self.toolBarHalfStep)
+        # layout.addWidget(self.toolBarHalfStep)
+        layout.addWidget(self.toolBarDumpButton)
         layout.addWidget(self.toolBarNextBut)
         layout.addWidget(self.toolBarInfoLabel)
 
@@ -83,14 +91,14 @@ class VehiclePane(QtWidgets.QWidget):
         widget = QtWidgets.QWidget()
         widget.setLayout(layout)
         widget.setObjectName("historyPane")
-        widget.setFixedHeight(400)
+        # widget.setFixedHeight(300)
         
         return widget
 
 
-    def createArenaPane(self, initArena, initSensorArea, h, w):
-        arenaH = initArena.getHeight()
-        arenaW = initArena.getWidth()
+    def createArenaPane(self):
+        arenaH = self.task.arena.getHeight()
+        arenaW = self.task.arena.getWidth()
         
         widget = QtWidgets.QWidget()
         layout = QtWidgets.QGridLayout()
@@ -100,10 +108,8 @@ class VehiclePane(QtWidgets.QWidget):
         layout.columnCount=arenaW
 
         self.arenaDict = {}
-        for loc in initArena.locations.values():
-            tile = QtWidgets.QFrame()
-            tile.setProperty("highlighted", False)
-            tile.setStyleSheet(f'background-color: {Location2Color(loc).name()}')
+        for loc in self.task.arena.locations.values():
+            tile = MapTile(loc, self.focusedAgent)
             layout.addWidget(
                 tile,
                 loc.y,
@@ -111,16 +117,7 @@ class VehiclePane(QtWidgets.QWidget):
             )
             self.arenaDict[loc] = tile
 
-        # frame the tiles in the sensor area
-        for zone in initSensorArea.zones.values():
-            for loc in zone.locations:
-                tile = layout.itemAtPosition(loc.y, loc.x).widget()
-                tile.setProperty("highlighted", True)
-                # tile.set
-
         widget.setLayout(layout)
-        widget.setFixedWidth(w)
-        widget.setFixedHeight(h+50)
         return widget
     
         
@@ -135,12 +132,29 @@ class VehiclePane(QtWidgets.QWidget):
         zoneLayout = self.focusedAgent.sensedArea.zoneLayout
         zoneCover = self.focusedAgent.sensedArea.zoneCoverZeroIndexed()
         self.zoneDict = {k: (ColoredPane.zonePane(zones[k], self.focusedAgent.orientation)) for k, locs in zoneLayout.items()}
+        # for k, v in self.zoneDict.items():
+        # location free zones get a square in a dedicated column
+        noCover = [k for k, cover in zoneCover.items() if cover == []]
+        coverLess = len(noCover)
+        if coverLess > 0:
+            # add the extra column, and an extra for the illusion of a division
+            ogColumnCount = layout.columnCount
+            layout.columnCount = layout.columnCount + math.ceil(coverLess / layout.rowCount) + 1
+            # place them in vertical lines
+            for i in range(0,coverLess):
+                place = (i//layout.rowCount + ogColumnCount, (layout.rowCount-1) - i%layout.rowCount)
+                zoneCover[noCover[i]] = [place, place]
+
+        # TODO find and handle overlapping zones
+
         for k, v in self.zoneDict.items():
             cover = zoneCover[k]
-            layout.addWidget(v, layout.rowCount-(cover[0][1]), cover[0][0], (cover[1][1])-(cover[0][1])+1, (cover[1][0])-(cover[0][0])+1)
+            try:
+                layout.addWidget(v, layout.rowCount-(cover[1][1]+1), cover[0][0], (cover[1][1])-(cover[0][1])+1, (cover[1][0])-(cover[0][0])+1)
+            except Exception as e:
+                print(e)
 
-
-    def createSensorAreaPane(self, initSensorArea, h, w):
+    def createSensorAreaPane(self):
         widget = QtWidgets.QWidget()
         layout = QtWidgets.QGridLayout()
         widget.setLayout(layout)
@@ -150,15 +164,15 @@ class VehiclePane(QtWidgets.QWidget):
         # a wrapper that gives context to the sensor map
         wrapLayout = QtWidgets.QGridLayout()
         upArrow = QtWidgets.QLabel(alignment=QtCore.Qt.AlignmentFlag.AlignVCenter)
-        upArrow.setPixmap(QPixmap('visual\\assets\\upArrow.png').scaledToHeight(40))
+        upArrow.setPixmap(QPixmap('visual\\assets\\upArrow.png').scaledToHeight(20))
+        self.targetOrientation = QtWidgets.QLabel(str(self.focusedAgent.getTargetOrientation()))
+        wrapLayout.addWidget(self.targetOrientation, 0, 0)
         wrapLayout.addWidget(upArrow, 0, 1)
-        wrapLayout.addWidget(widget, 1, 1)
+        wrapLayout.addWidget(widget, 1, 0, 1, 2)
         wrapLayout.setRowStretch(0, 1)
-        wrapLayout.setRowStretch(1, 15)
+        wrapLayout.setRowStretch(1, 30)
         wrapWidget = QtWidgets.QWidget()
         wrapWidget.setLayout(wrapLayout)
-        # upArrow.setStyleSheet("background-color: coral;")
-        # wrapWidget.setStyleSheet("")
 
         return (widget, wrapWidget)
 
@@ -169,15 +183,12 @@ class VehiclePane(QtWidgets.QWidget):
     def nextState(self):
         self.toolBarNextBut.setEnabled(False)
         self.toolBarNextBut.setText('dont click pls')
+        
         # prompt new state from model
-
-        # remove agent mark from arena pane
-        # for tile in self.arenaPane.findChildren(QtWidgets.QFrame):
-        #     if tile
-
-
         try:
             self.task.next()
+        # errors are unrecoverable, print and return
+        # TODO offer dump
         except ControllerException as e:
             print(e)
             self.toolBarInfoLabel.setText(f'No plan for current environment state,n{str(e)}')
@@ -189,29 +200,36 @@ class VehiclePane(QtWidgets.QWidget):
             self.toolBarInfoLabel.setStyleSheet(f'color: red')
             return
 
-        # mark new position on arena pane
+        # repaint movements and highlights on arena pane
         for loc, tile in self.arenaDict.items():
-            tile.setProperty("highlighted", self.focusedAgent.sensedArea.inSensedArea(loc))
-            tile.setStyleSheet(f'background-color: {Location2Color(loc).name()}')
-
+            tile.repaint(self.focusedAgent)
         
+        # update history
         self.paneTxt.setText(f'timestep {self.task.history.time}')
         newHistoryLog = HistoryListItem(self.task.history.lastRecord())
         self.historyList.addItem(newHistoryLog)
         self.historyList.scrollToBottom()
+
+        # update target orientation
+        self.targetOrientation.setText(str(self.focusedAgent.getTargetOrientation()))
 
         # I don't know why this needs to be reloaded, but otherwise highlights won't update
         self.loadStyleSheet('visual\\style.qss')
 
 
         # # show new sensor pane
-        # for t, tile in self.zoneDict.items():
-        #     zone = agent.sensedArea.zones[t]
-        #     tile.changeZoneColor(zone, agent)
         self.drawSensorPane(self.focusedAgent)
 
         self.toolBarNextBut.setEnabled(True)
         self.toolBarNextBut.setText('>')
+
+    @QtCore.Slot()
+    def dump(self) -> None:
+        try:
+            self.dumpFunction(self.focusedAgent)
+        except Exception as e:
+            print(e)
+            self.toolBarInfoLabel.setText(str(e))
 
     @QtCore.Slot()
     def nextHalfState(self):
@@ -248,8 +266,15 @@ class ColoredPane(QtWidgets.QWidget):
         return pane
     
 class MapTile(QtWidgets.QFrame):
-    def __init__(self, loc: AbsoluteLocation):
-        super().__init__()
+    def __init__(self, loc: AbsoluteLocation, focusedAgent: Agent, *args, **kwargs):
+        super(MapTile, self).__init__(*args, **kwargs)        
+        self.loc = loc
+        self.repaint(focusedAgent)
+
+    def repaint(self, focusedAgent: Agent) -> None:
+        self.setProperty("highlighted", focusedAgent.sensedArea.inSensedArea(self.loc))
+        self.setStyleSheet(f'background-color: {Location2Color(self.loc).name()}')
+        self.setToolTip(str(self.loc))
 
 class HistoryModel(QtCore.QAbstractListModel):
     def __init__(self, *args, history: History, **kwargs):

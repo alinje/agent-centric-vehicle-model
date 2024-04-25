@@ -3,14 +3,14 @@ QWidget#toolBar {
     background-color: #D3D0CB;
     border-style: ridge;
     border-width: 2px;
-    border-color: #393E41;
+    border-color: #21897E;
 }
 
 QWidget#historyPane {
     background-color: #D3D0CB;
     border-style: ridge;
     border-width: 2px;
-    border-color: #393E41;
+    border-color: #21897E;
 }
 
 QWidget#historyList {
@@ -50,6 +50,10 @@ QFrame {
 
 *[highlighted="false"] {
     border: 3px solid #ffffff;
+}
+
+*[targetHighlighted="true"] {
+    border: 3px solid #44bba4;
 }
 
 

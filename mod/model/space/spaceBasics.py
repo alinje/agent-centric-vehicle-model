@@ -7,20 +7,10 @@ from functools import reduce
 import sys
 from typing import Any, List
 
+from appControl.exceptions import MapException
 from model.space.locations import AbsoluteLocation, Location, LocationType, RelativeLocation
 
 
-class Action(Enum):
-    MLF = 1
-    MF = 2
-    MRF = 3
-    HALT = 4
-
-relativeAction = {}
-relativeAction[Action.MLF]  = (-1, 1)
-relativeAction[Action.MF]   = (0, 2)
-relativeAction[Action.MRF]  = (1, 1)
-relativeAction[Action.HALT] = (0, 0)
 
 
 class Orientation(IntEnum):
@@ -28,6 +18,12 @@ class Orientation(IntEnum):
     EAST = 2
     SOUTH = 3
     WEST = 4
+
+class RelativeOrientation(IntEnum):
+    FRONT = 0
+    RIGHT = 1
+    BACK = 2
+    LEFT = 3
 
 def orientationFromString(orient: str) -> Orientation:
     if orient == 'NORTH':
@@ -46,11 +42,14 @@ class Zone(ABC):
     Attributes:
         zoneLayout (dict[Enum, list[tuple[int,int]]): A mapping between an enum representing a zone and its related relative locations.
     """
-    def __init__(self, tp, locations: list[RelativeLocation]):
+    def __init__(self, tp: Enum, locations: list[RelativeLocation]):
         self.locations = locations
 
     def occupied(self) -> bool:
         return any([loc.occupied() for loc in self.locations])
+    
+    def occupants(self) -> list[Any]:
+        return [loc.occupant for loc in self.locations if loc.occupant != None]
     
     def unpassable(self) -> bool:
         return any([loc.unpassable() for loc in self.locations])
@@ -66,11 +65,14 @@ class Zone(ABC):
     def markTrail(self, present) -> None:
         pass
 
-    def toInput(self, agentOrientation: Orientation) -> str:
+    def toInput(self, agentOrientation: Orientation, agentId: int = 0) -> str:
         pass
 
     def isAgentZone(self) -> bool:
         pass
+
+    def __str__(self) -> str:
+        return self.tp.name.lower() if self.tp != None else 'NaN'
 
 class NonInvadingSpace(Zone):
     def __init__(self, loc: Location, arena: Arena):
@@ -151,6 +153,20 @@ def changesPerpendicularLateral(curDir, changes) -> tuple[int,int]:
         return (-l, -p)
     raise ValueError('curDir is None')
 
+def changeGlobalToPerpendicularLateral(curDir, changes) -> tuple[int,int]:
+    """ Changes from input (x,y) in global formulation to output in changes in relative formulation (p,l)."""
+    (x,y) = changes
+    if curDir == Orientation.NORTH:
+        return (-x, y)
+    if curDir == Orientation.EAST:
+        return (-y,-x)
+    if curDir == Orientation.SOUTH:
+        return (x, -y)
+    if curDir == Orientation.WEST:
+        return (y,  x)
+    raise ValueError('curDir is None')
+
+
 def orientationFromChange(change: tuple[int,int]) -> Orientation:
     if change[0] < 0:
         return Orientation.WEST
@@ -191,6 +207,12 @@ def trajectoryFrom2Orientation(agentOrientation, occupantOrientation) -> Traject
         return Trajectory.LATERAL_B
     if dif == 3:
         return Trajectory.PERPENDICULAR_R
+    
+# def orientationFromTrajectory(ogOrientation: Orientation, trajectory: Trajectory) -> Orientation:
+#     if trajectory == Trajectory.LATERAL_F:
+#         return ogOrientation
+#     if trajectory == Trajectory.PERPENDICULAR_L:
+
 
 # def threateningTrajectory(agentDirection, )
 
@@ -200,25 +222,34 @@ class SensedArea(ABC):
     
     Attributes:
         zones (dict of ExtOverlapZoneType: ExtOverlapZone)"""
-    def __init__(self, zones: dict[Enum,Zone]):
+    def __init__(self, zones: dict[Enum,Zone], target: tuple[int,int]) -> None:
         self.zones = zones
-    def constructSensedArea(self, curLoc, curDir, arena) -> None:
-        pass
+        self.target = target
 
-    def applicableState(self, mapData, stateData):
-        for zone in mapData:
-            if zone.occupied() is LocationType.OFFROAD and stateData[f'o{str(zone)}'] != 'true':
-                return False
-        return True
+    def constructSensedArea(self, curLoc: AbsoluteLocation, curDir: Orientation, arena: Arena) -> None:
+        cx = curLoc.x
+        cy = curLoc.y
+
+        # locations belonging to each zone expressed as distance from curLoc
+        distances = {k: [changesPerpendicularLateral(curDir, item) for item in v] for k, v in self._zoneLayout.items()}
+        
+        for k, v in distances.items():
+            try:
+                locs = [arena.locations[(cx+dis[0], cy+dis[1])] for dis in v]
+            except KeyError:
+                raise MapException(f'Map end, position ({cx+v[0][0]}, {cy+v[0][1]}) and/or ({cx+v[1][0]}, {cy+v[1][1]}) does not exist')
+            self.zones[k].locations = locs
+
 
     def agentZone(self) -> Zone:
         pass
 
     def markMove(self, present):
-        self.agentZone().markTrail(present)
+        pass
+        # self.agentZone().markTrail(present)
     
-    def toInputs(self, agentOrientation: Orientation) -> dict[str,str]:
-        return { f'o{str(zone)}': zone.toInput(agentOrientation) for zone in self.zones.values() }
+    def toInputs(self, agentOrientation: Orientation, agentLocation: AbsoluteLocation, agentId: int) -> dict[str,str]:
+        pass
 
     def inSensedArea(self, loc: AbsoluteLocation) -> bool:
         return any(loc in zone.locations for zone in self.zones.values())
@@ -239,18 +270,14 @@ class SensedArea(ABC):
         return zi
 
     def zoneCoverZeroIndexed(self) -> dict[Enum, tuple[tuple[int,int]]]:
-        # dict = {}
-        # for k, locs in self.zoneLayoutZeroIndexed().items():
-        #     lx, ly, hx, hy = 0
-        #     for loc in locs
-        #         lx = loc[0][0] if loc[0][0] < lx else lx
-        #         lx = loc[0][0] if loc[0][0] < lx else lx
-        #         lx = loc[0][0] if loc[0][0] < lx else lx
-        #         lx = loc[0][0] if loc[0][0] < lx else lx
-        return {k:
-                ((min([loc[0] for loc in locs]),min([loc[1] for loc in locs])),
+        zeroIndexed = self.zoneLayoutZeroIndexed().items()
+        cover = {k:
+                ((min(([loc[0] for loc in locs])),min([loc[1] for loc in locs])),
                  (max([loc[0] for loc in locs]),max([loc[1] for loc in locs])))
-                for k, locs in self.zoneLayoutZeroIndexed().items()}
+                for k, locs in zeroIndexed
+                if locs != None and len(locs) > 0}
+        cover.update({k: [] for k, locs in zeroIndexed if locs == None or len(locs) < 1})
+        return cover
 
 
     def zoneLayoutSize(self) -> tuple[int,int]:

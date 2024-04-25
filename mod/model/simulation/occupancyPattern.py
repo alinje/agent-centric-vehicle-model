@@ -7,6 +7,7 @@ from model.simulation.agent import Agent
 from model.simulation.obstacles import MovingObstacle, Occupant, OccupiedArena, StaticObstacle
 from model.space.extOverlapSpace import ExtOverlapZoneSensedArea
 from model.space.spaceBasics import AbsoluteLocation, Arena, Orientation, orientationFromChange
+from model.space.targetOrientation import TargetOrientationSensedArea
 
 class OccupancyPattern(ABC):
     def __init__(self, name: str, spawnCountdown: int=0) -> None:
@@ -98,7 +99,7 @@ class AgentSpawn(OccupancyPattern):
         # Agent()
         startLocations = list(filter(lambda a: not a.occupied(), [arena.locations[loc] for loc in self.startLocs]))
         startLocation = startLocations[random.randrange(0, len(startLocations))]
-        agent = Agent(startLocation, self.name, self.orientation, ExtOverlapZoneSensedArea(self.zoneLayout), self.controller)
+        agent = Agent(startLocation, self.name, self.orientation, TargetOrientationSensedArea(self.zoneLayout, self.target), self.controller)
         agent.move(startLocation, arena)
         return [agent]
 

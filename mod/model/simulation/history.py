@@ -2,7 +2,7 @@ from __future__ import annotations
 from abc import ABC
 import copy
 from model.space.locations import AbsoluteLocation
-from model.space.spaceBasics import Action
+from model.variables.variables import Move
 
 
 class History(object):
@@ -21,6 +21,8 @@ class History(object):
     def lastRecord(self) -> HistoryItem:
         return self.getRecord(self.time-1)
 
+    def toText(self) -> str:
+        return '\n\n'.join([str(time) + ':\n' + '\n'.join([str(subLog) for subLog in log]) for time, log in self.log.items()])
 
 class HistoryItem(ABC):
     def __init__(self) -> None:
@@ -54,7 +56,7 @@ class MovingObstacleItem(HistoryItem):
         return f'obs {self.name}: move from {str(self.preLoc)} to {str(self.postLoc)}'
 
 class AgentMoveItem(HistoryItem):
-    def __init__(self, action: Action, preLoc: AbsoluteLocation, postLoc: AbsoluteLocation, agentName: str) -> None:
+    def __init__(self, action: Move, preLoc: AbsoluteLocation, postLoc: AbsoluteLocation, agentName: str) -> None:
         super().__init__()
         self.action = action
         self.preLoc = copy.deepcopy(preLoc)
