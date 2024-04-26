@@ -20,7 +20,7 @@ agentFlexZonesSplitRegex = r'(?P<name>\w+) (?<tp>[ra])(?P<locs>\[(?:\(\d+,\d+\),
 
 staticObstacleSplitRegex = r'static obstacle (?P<name>\w+):\nstart (?P<start>\d+); loc \((?P<x>\d+),(?P<y>\d+)\);'
 
-def parseOccupiedMap(arenaMap: str, agentController) -> tuple[Arena,list[Occupant]]:
+def parseOccupiedMap(arenaMap: str, zoneName2Enum: Callable[[str],Enum], agentControllerConstructor: Callable[[],Control]) -> tuple[Arena,list[Occupant]]:
     # TODO agent spawn
     [plan, arenaMap] = arenaMap.split('plan end', 1)
     locations = plan2Locations(plan.split('\n'))
@@ -34,7 +34,7 @@ def parseOccupiedMap(arenaMap: str, agentController) -> tuple[Arena,list[Occupan
     # staticObstacles = RandomStaticObstacleSpawn('static_obstacles', 0, 3) #  TODO move to map
     
     agentMaps = regex.findall(agentCompSplitRegex, arenaMap)
-    agentSpawns = agentMaps2Agents(agentMaps, agentController().zoneName2Enum, agentController)
+    agentSpawns = agentMaps2Agents(agentMaps, zoneName2Enum, agentControllerConstructor)
 
     return (arena, paths + staticObstacles + agentSpawns)
 

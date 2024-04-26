@@ -12,20 +12,24 @@ class Control(object):
     """Layer between TuLiP generated Python controller and simulation program. 
     
     Translates inputs and outputs to/from strings and may reset the controller."""
-    def __init__(self, controller):
-        self._controller = controller
-        self._initState = self._controller.state
+    def __init__(self, controllerDict, initState, inputHash):
+        self._controller = controllerDict
+        self._initState = initState
+        self._inputHash = inputHash
+        self._state = self._initState
 
     def move(self, **inputs) -> Enum:
         time1 = time.time()
-        rawOutput = self._controller.move(**inputs)
+        inpHash = self._inputHash(inputs)
+        output = self._controller[self.state][inpHash]
         time2 = time.time()
         print(f'Controller found output in {time2-time1}.')
-        return self.output2Enum(rawOutput)
+        self.state = output['newState']
+        return self.output2Enum(output)
     
     @property
     def state(self) -> int:
-        return self._controller.state
+        return self._state
     
     @state.setter
     def state(self, setCode) -> None:
@@ -33,7 +37,7 @@ class Control(object):
         Arguments:
             setCode (int): If 1: reset to initial state."""
         if setCode == 1:
-            self._controller.state = self._initState
+            self._state = self._initState
             return
         
         
@@ -46,11 +50,12 @@ class Control(object):
     def moveName2Enum(self, moveName: str) -> Enum:
         return self._moveName2Enum[moveName]
     
-    def zoneName2Enum(self, zoneName: str) -> Enum:
-        return self._zoneName2Enum[zoneName]
+    @classmethod
+    def zoneName2Enum(cls, zoneName: str) -> Enum:
+        return cls._zoneName2Enum[zoneName]
 class TargetControl(Control):
-    def __init__(self):
-        super().__init__(TargetOrientationControl())
+    def __init__(self, controllerDict, initState, inputHash):
+        super().__init__(controllerDict, initState, inputHash)
     
     _zoneName2Enum = {
         'fc': TargetZoneType.FC
@@ -72,6 +77,7 @@ class TargetControl(Control):
     }
 
     def inputs2StringDict(self, inputs) -> dict[str,Any]:
+        # inputs = ['"True"' if v else '"False"']
         inputs['target'] = self._targetEnum2String[inputs['target']]
         return inputs
     

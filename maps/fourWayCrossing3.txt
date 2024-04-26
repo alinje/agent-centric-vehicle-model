@@ -1,0 +1,20 @@
+XXXXXXXXX---XXXXXXXXX
+XXXXXXXXX---XXXXXXXXX
+XXXXXXXXX---XXXXXXXXX
+XXXXXXXXX---XXXXXXXXX
+XXXXXXXXX---XXXXXXXXX
+---------------------
+---------------------
+---------------------
+XXXXXXXXX---XXXXXXXXX
+XXXXXXXXX---XXXXXXXXX
+XXXXXXXXX---XXXXXXXXX
+XXXXXXXXX---XXXXXXXXX
+XXXXXXXXX---XXXXXXXXX
+plan end
+
+agent southbound_left_turn:
+time 0; start [(9,4)]; heading SOUTH; target (12,7); fc [(-2,4),(-2,5),(1,3),(2,3)];
+
+agent northbound_right_turn:
+time 0; start [(11,8)]; heading NORTH; target (20,7); fc [];
