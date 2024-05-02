@@ -197,7 +197,7 @@ def trajectoryFromChangeOrientation(change: tuple[int,int], orientation: Orienta
         return Orientation.LATERAL_F
     
 
-def trajectoryFrom2Orientation(agentOrientation, occupantOrientation) -> Trajectory:
+def trajectoryFrom2Orientation(agentOrientation: Orientation, occupantOrientation: Orientation) -> Trajectory:
     dif = (int(agentOrientation) - int(occupantOrientation))%4
     if dif == 0:
         return Trajectory.LATERAL_F

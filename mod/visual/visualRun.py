@@ -239,7 +239,7 @@ class VehiclePane(QtWidgets.QWidget):
         # show new sensor pane
         for t, tile in self.zoneDict.items():
             zone = self.focusedAgent.sensedArea.zones[t]
-            tile.changeZoneColor(zone, agent)
+            tile.changeZoneColor(zone, agent.orientation)
 
 
 class ColoredPane(QtWidgets.QWidget):
@@ -260,7 +260,7 @@ class ColoredPane(QtWidgets.QWidget):
 
     @staticmethod
     def zonePane(zone: Zone, agentOrientation: Orientation) -> ColoredPane:
-        color = Zone2BluntColor(zone, Orientation)
+        color = Zone2BluntColor(zone, agentOrientation)
         pane = ColoredPane(color)
         pane.setToolTip(str(zone))
         return pane
