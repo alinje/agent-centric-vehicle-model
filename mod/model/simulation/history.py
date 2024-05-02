@@ -59,8 +59,8 @@ class AgentMoveItem(HistoryItem):
     def __init__(self, action: Move, preLoc: AbsoluteLocation, postLoc: AbsoluteLocation, agentName: str) -> None:
         super().__init__()
         self.action = action
-        self.preLoc = copy.deepcopy(preLoc)
-        self.postLoc = copy.deepcopy(postLoc)
+        self.preLoc = preLoc
+        self.postLoc = postLoc
         self.agentName = agentName
 
     def __str__(self) -> str:

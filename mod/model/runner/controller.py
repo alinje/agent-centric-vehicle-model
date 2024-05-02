@@ -19,11 +19,8 @@ class Control(object):
         self._state = self._initState
 
     def move(self, **inputs) -> Enum:
-        time1 = time.time()
         inpHash = self._inputHash(inputs)
         output = self._controller[self.state][inpHash]
-        time2 = time.time()
-        print(f'Controller found output in {time2-time1}.')
         self.state = output['newState']
         return self.output2Enum(output)
     
