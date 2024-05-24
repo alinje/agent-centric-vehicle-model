@@ -2,7 +2,7 @@ from __future__ import annotations
 from abc import ABC
 
 from model.simulation.history import HistoryItem, MovingObstacleItem
-from model.space.spaceBasics import AbsoluteLocation, Arena, LocationType, Orientation, orientationFromChange
+from model.space.spaceBasics import AbsoluteLocation, Arena
 
 class Temporal(ABC):
     def __init__(self, name: str='NaN') -> None:
@@ -40,7 +40,7 @@ class StaticObstacle(Occupant):
     _speed = 0
 
 class MovingObstacle(Occupant, Temporal):
-    _speed = 1
+    _speed = 1 # TODO depends
     def __init__(self, loc: AbsoluteLocation, path: Path, arena: Arena, name: str) -> None:
         super().__init__(loc, name)
         self.path = path
@@ -50,12 +50,13 @@ class MovingObstacle(Occupant, Temporal):
     def next(self, arena: Arena) -> HistoryItem:
         preLoc = self.loc
         (nextOnPath, suggestedPathIndex) = self.path.moveSuggestion(self.pathIndex, arena)
-        if nextOnPath.occupied():
-            return
-        self.loc.free(self)
-        self.loc = nextOnPath
-        nextOnPath.receiveOccupant(self)
-        self.orientation = self.path.orientationFrom(arena, self.pathIndex)
+        if nextOnPath != self.loc:
+            if arena.safeZoneOccupiedByOther(nextOnPath, self):
+                return
+            self.loc.free(self)
+            self.loc = nextOnPath
+            nextOnPath.receiveOccupant(self)
+            self.orientation = self.path.orientationFrom(arena, suggestedPathIndex)
         self.pathIndex = suggestedPathIndex
         # arena[(self.loc.x, self.loc.y)] = 
         return MovingObstacleItem(self.name, preLoc, self.loc)

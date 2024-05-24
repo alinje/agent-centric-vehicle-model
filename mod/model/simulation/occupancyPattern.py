@@ -5,7 +5,6 @@ from typing import Any
 from appControl.exceptions import PathException, SimulationException, SpawnException
 from model.simulation.agent import Agent
 from model.simulation.obstacles import MovingObstacle, Occupant, OccupiedArena, StaticObstacle
-from model.space.extOverlapSpace import ExtOverlapZoneSensedArea
 from model.space.spaceBasics import AbsoluteLocation, Arena, Orientation, orientationFromChange
 from model.space.targetOrientation import TargetOrientationSensedArea
 
@@ -44,7 +43,7 @@ class Path(OccupancyPattern):
     
     def getLocation(self, arena: Arena, pathIndex: int) -> AbsoluteLocation:
         if pathIndex >= len(self.locationsOrdered):
-            pathIndex = pathIndex - (len(self.locationsOrdered) +1)
+            pathIndex = pathIndex - len(self.locationsOrdered)
         return arena.locations[self.locationsOrdered[pathIndex]]
     
     def spawn(self, arena: Arena) -> list[Occupant]:
@@ -59,7 +58,10 @@ class Path(OccupancyPattern):
 
     def orientationFrom(self, arena, pathIndex) -> Orientation: # TODO arena not needed
         curLoc = self.getLocation(arena, pathIndex)
-        nextLoc = self.getLocation(arena, pathIndex+1)
+        nextLoc = curLoc
+        while nextLoc.x == curLoc.x and nextLoc.y == curLoc.y:
+            pathIndex += 1
+            nextLoc = self.getLocation(arena, pathIndex)
         return orientationFromChange((nextLoc.x-curLoc.x, nextLoc.y-curLoc.y))
         
 

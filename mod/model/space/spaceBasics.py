@@ -92,6 +92,9 @@ class NonInvadingSpace(Zone):
         return (self.centerLoc.occupied() or 
                 any([loc.occupant != None and loc.occupant.speed > 0 for loc in self._distanceOne]))
 
+    def occupiedByOther(self, occupant) -> bool:
+        return ((self.centerLoc.occupied() and self.centerLoc.occupant != occupant) or 
+                any([loc.occupant != None and loc.occupant != occupant and loc.occupant.speed > 0 for loc in self._distanceOne]))
 
 
 class Arena(object):
@@ -138,6 +141,10 @@ class Arena(object):
     def safeZoneOccupied(self, loc: AbsoluteLocation) -> bool:
         zone = NonInvadingSpace(loc, self)
         return zone.occupied()
+    
+    def safeZoneOccupiedByOther(self, loc: AbsoluteLocation, occupant) -> bool:
+        zone = NonInvadingSpace(loc, self)
+        return zone.occupiedByOther(occupant)
 
 def changesPerpendicularLateral(curDir, changes) -> tuple[int,int]:
     """
