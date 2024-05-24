@@ -43,9 +43,9 @@ class TargetMove(Move, Enum):
             or self == TargetMove.HALT):
             return preOrientation
         if self == TargetMove.TL:
-            return Orientation((preOrientation-1)%4)
+            return Orientation(((preOrientation-2)%4)+1)
         if self == TargetMove.TR:
-            return Orientation((preOrientation+1)%4)
+            return Orientation((preOrientation%4)+1)
         
     def __str__(self) -> str:
         return self.name
@@ -106,8 +106,8 @@ class TargetOrientationZone(Zone):
                         for occupant in self.occupants()])))
         fc = (self.tp == TargetZoneType.FC
               and self.occupied()
-              and not any([occupant.speed > 0
-                           for occupant in self.occupants()]))
+              and any([occupant.speed > 0
+                        for occupant in self.occupants()]))
         return offroad or occupiedBlocking or lb or lff or fc
 
 
