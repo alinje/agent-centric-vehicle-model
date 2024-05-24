@@ -4,7 +4,7 @@ from enum import Enum, auto
 
 from appControl.exceptions import SimulationException, SynthesisException
 from model.space.locations import AbsoluteLocation, Location, LocationType
-from model.space.spaceBasics import Orientation, RelativeLocation, SensedArea, Trajectory, Zone, changeGlobalToPerpendicularLateral, changesPerpendicularLateral, trajectoryFrom2Orientation
+from model.space.spaceBasics import Orientation, RelativeLocation, CareArea, Trajectory, Zone, changeGlobalToPerpendicularLateral, changesPerpendicularLateral, trajectoryFrom2Orientation
 from model.variables.variables import Move, ZoneRef
 
 
@@ -111,7 +111,7 @@ class TargetOrientationZone(Zone):
         return offroad or occupiedBlocking or lb or lff or fc
 
 
-class TargetOrientationSensedArea(SensedArea): # TODO maybe like 'InputTranslator'
+class TargetOrientationCareArea(CareArea):
     def __init__(self, zoneLayout: dict[TargetZoneType, list[tuple[int,int]]], target: tuple[int,int]):
         self._zoneLayout = {
             TargetZoneType.LF:   [(-1,1), (-1,2)],

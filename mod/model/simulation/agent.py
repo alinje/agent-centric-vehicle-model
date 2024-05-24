@@ -3,7 +3,7 @@ from model.runner.controller import Control
 from model.simulation.history import AgentMoveItem, HistoryItem
 from model.simulation.obstacles import Occupant, Temporal
 from model.space.locations import AbsoluteLocation
-from model.space.spaceBasics import Arena, Orientation, SensedArea, changesPerpendicularLateral
+from model.space.spaceBasics import Arena, Orientation, CareArea, changesPerpendicularLateral
 from model.variables.variables import Move
 
 
@@ -12,12 +12,12 @@ class Agent(Occupant, Temporal):
     Attributes:
         curLoc (AbsoluteLocation): Current location.
         orientation (Orientation): Current orientation.
-        sensedArea (SensedArea): Area of all locations currently covered by vehicle sensors.)"""
+        careArea (CareArea): Area of all locations currently considered by vehicle controller.)"""
     _speed = 2
-    def __init__(self, loc: AbsoluteLocation, name: str, orientation: Orientation, sensedArea: SensedArea, controller: Control) -> None:
+    def __init__(self, loc: AbsoluteLocation, name: str, orientation: Orientation, careArea: CareArea, controller: Control) -> None:
         super().__init__(loc, name)
         self.orientation = orientation
-        self.sensedArea = sensedArea
+        self.careArea = careArea
         self.controller = controller
         self.path = []
 
@@ -29,7 +29,7 @@ class Agent(Occupant, Temporal):
         self.loc = newLoc
         self.loc.receiveOccupant(self)
 
-        self.sensedArea.constructSensedArea(newLoc, self.orientation, arena)
+        self.careArea.constructCareArea(newLoc, self.orientation, arena)
 
 
     def applyAction(self, action: Move, arena: Arena) -> None:
@@ -37,12 +37,12 @@ class Agent(Occupant, Temporal):
         newLoc = arena.locations[(self.loc.x+locChange[0], self.loc.y+locChange[1])]
         # new orientation
         self.orientation = action.orientationAfterMove(self.orientation)
-        self.sensedArea.markMove(False)
+        self.careArea.markMove(False)
         self.move(newLoc, arena)
 
     def next(self, arena: Arena) -> HistoryItem:
         preLoc = self.loc
-        inputs = self.sensedArea.toInputs(self.orientation, self.loc, id(self))
+        inputs = self.careArea.toInputs(self.orientation, self.loc, id(self))
         stringInputs = self.controller.inputs2StringDict(inputs)
         try:
             act = self.controller.move(**stringInputs)
@@ -55,10 +55,10 @@ class Agent(Occupant, Temporal):
         return log
     
     def getTargetOrientation(self): # TODO hm only works for target orientation
-        return self.sensedArea.toTargetOrientation(self.orientation, self.loc)
+        return self.careArea.toTargetOrientation(self.orientation, self.loc)
     
     def reachedTarget(self) -> bool:
-        return self.sensedArea.inTarget(self.loc)
+        return self.careArea.inTarget(self.loc)
 
     def reset(self) -> bool:
         self.controller.state = 1

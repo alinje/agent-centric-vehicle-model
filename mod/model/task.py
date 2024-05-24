@@ -65,7 +65,7 @@ class Task(object):
         for agent in self.agents:
             logs.append(agent.next(self.arena))
             if agent.reachedTarget():
-                logs.append(ArrivedHistoryItem(agent.name, agent.sensedArea.target, agent.loc))
+                logs.append(ArrivedHistoryItem(agent.name, agent.careArea.target, agent.loc))
                 arrived.append(agent)
 
         self.agents[:] = [agent for agent in self.agents if agent not in arrived]

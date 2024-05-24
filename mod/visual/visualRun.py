@@ -7,9 +7,7 @@ from appControl.exceptions import ControllerException, MapException
 
 from model.simulation.obstacles import MovingObstacle, StaticObstacle
 from model.simulation.history import History, HistoryItem
-from model.space.extOverlapSpace import ExtOverlapZoneSensedArea, ExtOverlapZoneType
 from model.space.locations import AbsoluteLocation, Location
-from model.space.overlapSpace import OverlapZoneType
 from model.space.spaceBasics import LocationType, Orientation, Zone
 from model.task import Agent, Task
 
@@ -25,9 +23,9 @@ class VehiclePane(QtWidgets.QWidget):
         self.windowTitle = 'yodeli'
         self.historyPane = self.createHistoryPane()
         self.arenaPane = self.createArenaPane()
-        self.sensorPane, wrapSensorAreaPane = self.createSensorAreaPane()
+        self.careAreaPane, wrapCareAreaPane = self.createCareAreaPane()
         careAreaHistorySplitter = QtWidgets.QSplitter()
-        careAreaHistorySplitter.addWidget(wrapSensorAreaPane)
+        careAreaHistorySplitter.addWidget(wrapCareAreaPane)
         careAreaHistorySplitter.addWidget(self.historyPane)
         careAreaHistorySplitter.setStretchFactor(0,1)
         careAreaHistorySplitter.setStretchFactor(1,1)
@@ -121,16 +119,16 @@ class VehiclePane(QtWidgets.QWidget):
         return widget
     
         
-    def createSensorArea(self, layout: QtWidgets.QGridLayout):
-        areaSize = self.focusedAgent.sensedArea.zoneLayoutSize()
+    def createCareArea(self, layout: QtWidgets.QGridLayout):
+        areaSize = self.focusedAgent.careArea.zoneLayoutSize()
         layout.rowCount = areaSize[1]+1
         layout.columnCount = areaSize[0]+1
         layout.setVerticalSpacing(2)
         layout.setHorizontalSpacing(2)
 
-        zones = self.focusedAgent.sensedArea.zones
-        zoneLayout = self.focusedAgent.sensedArea.zoneLayout
-        zoneCover = self.focusedAgent.sensedArea.zoneCoverZeroIndexed()
+        zones = self.focusedAgent.careArea.zones
+        zoneLayout = self.focusedAgent.careArea.zoneLayout
+        zoneCover = self.focusedAgent.careArea.zoneCoverZeroIndexed()
         self.zoneDict = {k: (ColoredPane.zonePane(zones[k], self.focusedAgent.orientation)) for k, locs in zoneLayout.items()}
         # for k, v in self.zoneDict.items():
         # location free zones get a square in a dedicated column
@@ -154,14 +152,14 @@ class VehiclePane(QtWidgets.QWidget):
             except Exception as e:
                 print(e)
 
-    def createSensorAreaPane(self):
+    def createCareAreaPane(self):
         widget = QtWidgets.QWidget()
         layout = QtWidgets.QGridLayout()
         widget.setLayout(layout)
-        self.createSensorArea(layout)
+        self.createCareArea(layout)
         
 
-        # a wrapper that gives context to the sensor map
+        # a wrapper that gives context to the care area visualisation
         wrapLayout = QtWidgets.QGridLayout()
         upArrow = QtWidgets.QLabel(alignment=QtCore.Qt.AlignmentFlag.AlignVCenter)
         upArrow.setPixmap(QPixmap('visual\\assets\\upArrow.png').scaledToHeight(20))
@@ -221,8 +219,8 @@ class VehiclePane(QtWidgets.QWidget):
         self.loadStyleSheet('visual\\style.qss')
 
 
-        # # show new sensor pane
-        self.drawSensorPane(self.focusedAgent)
+        # # show new care area pane
+        self.drawCareAreaPane(self.focusedAgent)
 
         self.toolBarNextBut.setEnabled(True)
         self.toolBarNextBut.setText('>')
@@ -239,10 +237,10 @@ class VehiclePane(QtWidgets.QWidget):
     def nextHalfState(self):
         pass
 
-    def drawSensorPane(self, agent: Agent) -> None:
-        # show new sensor pane
+    def drawCareAreaPane(self, agent: Agent) -> None:
+        # show new care area
         for t, tile in self.zoneDict.items():
-            zone = self.focusedAgent.sensedArea.zones[t]
+            zone = self.focusedAgent.careArea.zones[t]
             tile.changeZoneColor(zone, agent.orientation)
 
 
@@ -276,7 +274,7 @@ class MapTile(QtWidgets.QFrame):
         self.repaint(focusedAgent)
 
     def repaint(self, focusedAgent: Agent) -> None:
-        self.setProperty("highlighted", focusedAgent.sensedArea.inSensedArea(self.loc))
+        self.setProperty("highlighted", focusedAgent.careArea.inCareArea(self.loc))
         self.setStyleSheet(f'background-color: {Location2Color(self.loc).name()}')
         self.setToolTip(str(self.loc))
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from abc import ABC
-import copy
 from enum import Enum, IntEnum
 from functools import reduce
 import sys
@@ -223,9 +222,9 @@ def trajectoryFrom2Orientation(agentOrientation: Orientation, occupantOrientatio
 
 # def threateningTrajectory(agentDirection, )
 
-class SensedArea(ABC): 
+class CareArea(ABC): 
     """
-    A map of all locations currently covered by vehicle sensors.
+    A map of all locations currently considered by vehicle controller.
     
     Attributes:
         zones (dict of ExtOverlapZoneType: ExtOverlapZone)"""
@@ -233,7 +232,7 @@ class SensedArea(ABC):
         self.zones = zones
         self.target = target
 
-    def constructSensedArea(self, curLoc: AbsoluteLocation, curDir: Orientation, arena: Arena) -> None:
+    def constructCareArea(self, curLoc: AbsoluteLocation, curDir: Orientation, arena: Arena) -> None:
         cx = curLoc.x
         cy = curLoc.y
 
@@ -258,7 +257,7 @@ class SensedArea(ABC):
     def toInputs(self, agentOrientation: Orientation, agentLocation: AbsoluteLocation, agentId: int) -> dict[str,str]:
         pass
 
-    def inSensedArea(self, loc: AbsoluteLocation) -> bool:
+    def inCareArea(self, loc: AbsoluteLocation) -> bool:
         return any(loc in zone.locations for zone in self.zones.values())
     
         
