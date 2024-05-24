@@ -96,7 +96,7 @@ def targetOrientationSpec() -> GRSpec:
         # not meeting and passing at the same time
         '! (olff && olb)',
         '((move = "m_h" || move = "m_f") && olff) -> X (! olb)',
-        '((move = "m_h" || move = "m_f") && olb) -> X (! olff)',
+        '((move = "m_h" || move = "m_f") && olb) -> X (! olff)', # TODO overlapping w transition
         # meeting two obstacles
         '((move = "m_h") && olff && olf) -> X (olf && (! olb))', 
         # being passed by two obstacles
@@ -143,21 +143,32 @@ def targetOrientationSpec() -> GRSpec:
     # if multiple paths are available, agent attempts to approach target
     movePrefsTargetForward = [
         f'((! {forwardBlocked}) -> (move = "m_f"))',
+        # if it is a temporary block, we wait for a path to open up
+        f'(({forwardBlocked} && (! of)) -> (move = "m_h"))',
         # if target is forward, one should keep right
-        f'(({forwardBlocked} && (! {rightForwardShiftBlocked})) -> (move = "m_srf"))',
-        f'(({forwardBlocked} && (! {leftForwardShiftBlocked}) && {rightForwardShiftBlocked}) -> (move = "m_slf"))',
+        f'((of && (! {rightForwardShiftBlocked})) -> (move = "m_srf"))',
+        f'((of && {rightForwardShiftBlocked} && (! orf)) -> (move = "m_h"))',
+        f'((of && orf && (! {leftForwardShiftBlocked})) -> (move = "m_slf"))',
+        f'((of && orf && {leftForwardShiftBlocked} && (! olf)) -> (move = "m_h"))',
         # or turn left
-        f'(({forwardBlocked} && {leftForwardShiftBlocked} && {rightForwardShiftBlocked} && (! {leftTurnBlocked})) -> (move = "m_tl"))',
+        f'((of && olf && orf && (! {leftTurnBlocked})) -> (move = "m_tl"))',
+        f'((of && olf && orf && {leftTurnBlocked} && (! olt)) -> (move = "m_h"))',
     ]
     movePrefsTargetLeft = [
         f'((! {leftTurnBlocked}) -> move = "m_tl")',
-        f'(({leftTurnBlocked} && (! {leftForwardShiftBlocked})) -> move = "m_slf")',
-        f'(({leftTurnBlocked} && {leftForwardShiftBlocked} && (! {forwardBlocked})) -> move = "m_f")',
+        f'(({leftTurnBlocked} && (! olt)) -> move = "m_h")',
+        f'((olt && (! {leftForwardShiftBlocked})) -> move = "m_slf")',
+        f'((olt && {leftForwardShiftBlocked} && (! olf)) -> move = "m_h")',
+        f'((olt && olf && (! {forwardBlocked})) -> move = "m_f")',
+        f'((olt && olf && {forwardBlocked} && (! of)) -> move = "m_h")',
     ]
     movePrefsTargetRight = [
         f'((! {rightTurnBlocked}) -> move = "m_tr")',
-        f'(({rightTurnBlocked} && (! {rightForwardShiftBlocked})) -> move = "m_srf")',
-        f'(({rightTurnBlocked} && {rightForwardShiftBlocked} && (! {forwardBlocked})) -> move = "m_f")',
+        f'(({rightTurnBlocked} && (! ort)) -> move = "m_h")',
+        f'((ort && (! {rightForwardShiftBlocked})) -> move = "m_srf")',
+        f'((ort && {rightForwardShiftBlocked} && (! orf)) -> move = "m_h")',
+        f'((ort && orf && (! {forwardBlocked})) -> move = "m_f")',
+        f'((ort && orf && {forwardBlocked} && (! of)) -> move = "m_h")',
     ]
 
 
