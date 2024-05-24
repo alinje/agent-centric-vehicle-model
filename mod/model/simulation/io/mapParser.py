@@ -9,13 +9,12 @@ from model.simulation.obstacles import Occupant, OccupiedArena
 from model.simulation.occupancyPattern import AgentSpawn, Path, StaticObstacleSpawn
 from model.space.locations import AbsoluteLocation, LocationType
 from model.space.spaceBasics import Arena, orientationFromString
-from model.synthesisation.output.extOverlapControl import OverlapControl
 
-pathSplitRegex = r'(?:(?P<name>\w+):\n(?P<desc>(?:(?:\d+\s?)+,\s?(?:\d+\s?)+;\s)+(?:repeat;\s?)?))' #r'(?P<path>path (?P<pathName>\w+):\n(?:(?P<line>(?:\d+\s?)+,\s?(?:\d+\s?)+;\s)|(repeat;\s?))+)'
-lineSplitRegex = r'(?P<desc>(?:(?:\d+\s?)+,\s?(?:\d+\s?)+;\s))'
+pathSplitRegex = r'(?:(?P<name>\w+):\n(?P<desc>(?:(?:\d+\s?)+,\s?(?:\d+\s?)+;\s?)+(?:repeat;\s?)?))' #r'(?P<path>path (?P<pathName>\w+):\n(?:(?P<line>(?:\d+\s?)+,\s?(?:\d+\s?)+;\s)|(repeat;\s?))+)'
+lineSplitRegex = r'(?P<desc>(?:(?:\d+\s?)+,\s?(?:\d+\s?)+;\s?))'
 coordSplitRegex = r'(?P<y>\d+\s?)+,\s?(?P<x>\d+\s?)+;'
 
-agentCompSplitRegex = r'(?:agent (?P<agentName>\w+):\ntime (?P<time>\d+); start (?P<start>\[(?:\(\d+,\d+\),?)+\]); heading (?P<heading>\w+); target (?P<target>\(\d+,\d+\));\s*(?P<flexZones>flex zones: (?:\w+ [ra]\[(?:\(\d+,\d+\),?)*\];\s*)*;)?)'
+agentCompSplitRegex = r'(?:agent (?P<agentName>\w+):\ntime (?P<time>\d+); start (?P<start>\[(?:\(\d+,\d+\),?)+\]); heading (?P<heading>\w+); target (?P<target>\(\d+,\d+\));\s*(?P<flexZones>flex zones:\s*(?:\w+ [ra]\[(?:\(\d+,\d+\),?)*\];\s*)*;)?)'
 agentFlexZonesSplitRegex = r'(?P<name>\w+) (?<tp>[ra])(?P<locs>\[(?:\(\d+,\d+\),?)*\]);\s*'
 
 staticObstacleSplitRegex = r'static obstacle (?P<name>\w+):\nstart (?P<start>\d+); loc \((?P<x>\d+),(?P<y>\d+)\);'
