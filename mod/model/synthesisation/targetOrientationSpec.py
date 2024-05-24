@@ -8,7 +8,7 @@ def leftTurnBlockedSpec() -> GRSpec:
         
     }
 
-def overlapSpaceSpec() -> GRSpec:
+def targetOrientationSpec() -> GRSpec:
     env_vars = {
         # obstacle occupancies
         'olf':   'boolean', # static, oncoming and overtaking obstacles to the left and slightly forward of the agent

@@ -1,11 +1,8 @@
-from abc import ABC
+
 from enum import Enum
-import time
 from typing import Any
 
 from model.space.targetOrientation import TargetMove, TargetOrientationType, TargetZoneType
-
-from model.synthesisation.output.targetOrientationControl import TargetOrientationControl
 
 
 class Control(object):
