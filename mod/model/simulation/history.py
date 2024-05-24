@@ -74,3 +74,12 @@ class SpawnHistoryItem(HistoryItem):
         if len(self.namesSpawned) < 1:
             return 'no spawns'
         return f'spawns: {', '.join([str(log) for log in self.namesSpawned])}'
+    
+class ArrivedHistoryItem(HistoryItem):
+    def __init__(self, name, targetLoc, finishedLoc) -> None:
+        self.name = name
+        self.targetLoc = targetLoc
+        self.finishedLoc = finishedLoc
+
+    def __str__(self) -> str:
+        return f'{self.name} has arrived at {self.finishedLoc}.'

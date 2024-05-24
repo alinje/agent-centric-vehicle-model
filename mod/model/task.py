@@ -1,15 +1,17 @@
 
 from typing import Any
+from appControl.exceptions import SimulationException
 from model.simulation.agent import Agent
 from model.simulation.obstacles import Temporal
-from model.simulation.history import EnvironmentMoveItem, History, HistoryItem, SpawnHistoryItem
+from model.simulation.history import ArrivedHistoryItem, EnvironmentMoveItem, History, HistoryItem, SpawnHistoryItem
 from model.space.spaceBasics import Arena
 
 
         
 class Task(object):
-    """
+    """ Task consisting of an arena, agents conducted by controller objects moving in it and environment objects conducted by simpler and arena specified paths.
     Attributes:
+        patterns (list[OccupancyPattern]): Patterns describing what occupants and temporals to spawn in the associated arena, and at which times.
         agents (list[Agent]): Agents controlled by a logical controller.
         environment (list[Temporal]): Temporal factors of the environments.
         arena (Arena): Arena of the task.
@@ -51,23 +53,38 @@ class Task(object):
     def nextEnvironment(self) -> HistoryItem:
         logs = []
         for envItem in self.environment:
-            logs.append(envItem.next(self.arena))
+            log = envItem.next(self.arena)
+            if log != None:
+                logs.append(log)
         return EnvironmentMoveItem(logs)
 
 
     def nextAgent(self) -> list[HistoryItem]:
         logs = []
+        arrived = []
         for agent in self.agents:
             logs.append(agent.next(self.arena))
-        return logs
+            if agent.reachedTarget():
+                logs.append(ArrivedHistoryItem(agent.name, agent.sensedArea.target, agent.loc))
+                arrived.append(agent)
 
-    def next(self) -> None:
+        self.agents[:] = [agent for agent in self.agents if agent not in arrived]
+
+        return logs + arrived
+
+    def next(self, nudge: bool = False) -> bool:
+        """
+            Returns:
+                bool: Whether the task is all finished or not, that is, are there agents that have not reached their target."""
+        if self.done():
+            raise SimulationException('No more moves to be done.')
         agentLogs = self.nextAgent()
         spawnLog = self.populate()
         envLog1 = self.nextEnvironment() # TODO twice!!
         # envLog2 = self.nextEnvironment()
         self.history.addToHistory(agentLogs + [spawnLog, envLog1])
         # self.history.addToHistory([envLog2])
+        return self.done()
 
     def nextHalfStep(self) -> None:
         envLog = self.nextEnvironment()
@@ -76,3 +93,6 @@ class Task(object):
     def getAgentHistory(self, agent: Agent) -> History:
         # TODO
         return self.history
+    
+    def done(self) -> bool:
+        return len(self.agents) < 1

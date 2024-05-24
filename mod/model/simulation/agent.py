@@ -1,4 +1,3 @@
-from enum import Enum
 from appControl.exceptions import ControllerException
 from model.runner.controller import Control
 from model.simulation.history import AgentMoveItem, HistoryItem
@@ -20,17 +19,18 @@ class Agent(Occupant, Temporal):
         self.orientation = orientation
         self.sensedArea = sensedArea
         self.controller = controller
+        self.path = []
 
     # TODO these have unclear separation of concern, clean
     def move(self, newLoc: AbsoluteLocation, arena: Arena) -> None:
         if self.loc is not None:
+            self.path.append(self.loc)
             self.loc.free(self)
         self.loc = newLoc
         self.loc.receiveOccupant(self)
 
         self.sensedArea.constructSensedArea(newLoc, self.orientation, arena)
 
-        self.sensedArea.markMove(True)
 
     def applyAction(self, action: Move, arena: Arena) -> None:
         locChange = changesPerpendicularLateral(self.orientation, action.relativeChange)
@@ -57,5 +57,8 @@ class Agent(Occupant, Temporal):
     def getTargetOrientation(self): # TODO hm only works for target orientation
         return self.sensedArea.toTargetOrientation(self.orientation, self.loc)
     
+    def reachedTarget(self) -> bool:
+        return self.sensedArea.inTarget(self.loc)
+
     def reset(self) -> bool:
         self.controller.state = 1

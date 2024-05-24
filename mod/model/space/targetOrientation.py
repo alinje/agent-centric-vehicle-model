@@ -153,3 +153,8 @@ class TargetOrientationSensedArea(SensedArea): # TODO maybe like 'InputTranslato
         inputs['target'] = self.toTargetOrientation(agentOrientation, agentLocation)
         return inputs
 
+
+    # TODO think about 'almosts'
+    def inTarget(self, curLoc: AbsoluteLocation) -> bool:
+        return (curLoc.x,curLoc.y) == self.target
+    

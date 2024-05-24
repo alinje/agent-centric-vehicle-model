@@ -182,11 +182,15 @@ class VehiclePane(QtWidgets.QWidget):
     @QtCore.Slot()
     def nextState(self):
         self.toolBarNextBut.setEnabled(False)
-        self.toolBarNextBut.setText('dont click pls')
+        self.toolBarNextBut.setText('')
         
         # prompt new state from model
         try:
-            self.task.next()
+            finished = self.task.next(self.toolBarNudge.isChecked())
+            if finished:
+                self.toolBarInfoLabel.setText('Finished task!')
+                return
+
         # errors are unrecoverable, print and return
         # TODO offer dump
         except ControllerException as e:
