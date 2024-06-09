@@ -1,18 +1,10 @@
-### Agent-centric ...
+# Agent-centric autonomous vehicle controller simulator
 
-# Map syntax
-File must begin with a plan of the arena.
-The arena is sectioned into four different types of "tiles". These are:
-* `X` offroad, unpassable terrain
-* `-` passable road
-*
-The plan is ended with `plan end;`
-Plan is additionally described on the following roads with:
-* `random start`
+The purpose of this simulator is to provide a visualisation of agent-centric vehicle models. It provides a global view with the agent-centric inputs shown as an excision. Top point of visualisation is `showGraphicView` in `mod/appControl/appControl.py`.
 
-At least one agent must be described. 
+The simulator uses a logical controller provided as a scxml file. An interface for synthesising such a file with the help of TuLiP (The Temporal Logic Planning toolbox) is given in `mod/synthesise.py`. Example controllers are given in `mod/synthesis`.
 
-Static and moving obstacles can be defined using the following syntax.
- 
+The simulator can dump a history of a run as a text file.
+The simulator as of now uses a model with a discrete location arena.
 
-For examples, see `./exampleMaps/`
+Example maps can be found in `maps/`.

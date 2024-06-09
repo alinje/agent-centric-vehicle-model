@@ -5,7 +5,7 @@ def leftTurnBlockedSpec() -> GRSpec:
         'olf':   'boolean', # static, oncoming and overtaking obstacles to the left and slightly forward of the agent
         'olff':  'boolean', # oncoming obstacles to the left and further forward of the agent
         'olb':   'boolean', # overtaking obstacles to the left and besides and slightly behind the agent
-        
+
     }
 
 def targetOrientationSpec() -> GRSpec:
@@ -96,7 +96,7 @@ def targetOrientationSpec() -> GRSpec:
         # not meeting and passing at the same time
         '! (olff && olb)',
         '((move = "m_h" || move = "m_f") && olff) -> X (! olb)',
-        '((move = "m_h" || move = "m_f") && olb) -> X (! olff)', # TODO overlapping w transition
+        '((move = "m_h" || move = "m_f") && olb) -> X (! olff)',
         # meeting two obstacles
         '((move = "m_h") && olff && olf) -> X (olf && (! olb))', 
         # being passed by two obstacles
@@ -105,7 +105,6 @@ def targetOrientationSpec() -> GRSpec:
 
 
         # some aspects of the target transitions are known even in this simple discretization
-        # TODO formulate as lists back and forth?
         # target is static when halting
         '(move = "m_h") -> (target = (X target))',
 
@@ -114,7 +113,7 @@ def targetOrientationSpec() -> GRSpec:
         '((move = "m_tl" && target = "t_r") || (move = "m_tr" && target = "t_l")) -> ((X target) != "t_f")',
 
         # turning when facing target will result in target changing
-        '((move = "m_tr") && (target = "t_f")) -> ((X target) = "t_l")', # TODO oor just not in front?
+        '((move = "m_tr") && (target = "t_f")) -> ((X target) = "t_l")',
         '((move = "m_tl") && (target = "t_f")) -> ((X target) = "t_r")',
 
         # turning towards the target will not move it to other side of you
@@ -175,8 +174,6 @@ def targetOrientationSpec() -> GRSpec:
     sys_safe = {
         # no collision
         '! oa',
-        # moves if possible
-        f'{pathExistsGuaranteed} -> (move != "m_h")',
 
         # towards the target
         f'((target = "t_f") -> ({' && '.join(movePrefsTargetForward)}))',
@@ -187,7 +184,6 @@ def targetOrientationSpec() -> GRSpec:
 
     pathWillExist = [
         pathExistsGuaranteed,
-        
         # space can not be permanently occupied by moving objects
         '(! olff)',
         '(! olb)',
@@ -195,10 +191,7 @@ def targetOrientationSpec() -> GRSpec:
     ]
 
     env_prog = pathWillExist
-    sys_prog = {
-        # TODO inf often we will progress towards the goal
-        # 'target = "t_f" && move = "m_f"',
-    }
+    sys_prog = {}
 
     spec = GRSpec(env_vars, sys_vars, env_init, sys_init,
                   env_safe, sys_safe, env_prog, sys_prog)
