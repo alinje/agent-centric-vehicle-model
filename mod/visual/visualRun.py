@@ -162,7 +162,7 @@ class VehiclePane(QtWidgets.QWidget):
         wrapLayout = QtWidgets.QGridLayout()
         upArrow = QtWidgets.QLabel(alignment=QtCore.Qt.AlignmentFlag.AlignVCenter)
         upArrow.setPixmap(QPixmap('visual\\assets\\upArrow.png').scaledToHeight(20))
-        self.targetOrientation = QtWidgets.QLabel(str(self.focusedAgent.getTargetOrientation()))
+        self.targetOrientation = QtWidgets.QLabel(str(self.focusedAgent.getTargetOrientation().name))
         wrapLayout.addWidget(self.targetOrientation, 0, 0)
         wrapLayout.addWidget(upArrow, 0, 1)
         wrapLayout.addWidget(widget, 1, 0, 1, 2)
@@ -212,7 +212,7 @@ class VehiclePane(QtWidgets.QWidget):
         self.historyList.scrollToBottom()
 
         # update target orientation
-        self.targetOrientation.setText(str(self.focusedAgent.getTargetOrientation()))
+        self.targetOrientation.setText(str(self.focusedAgent.getTargetOrientation().name))
 
         # I don't know why this needs to be reloaded, but otherwise highlights won't update
         self.loadStyleSheet('visual\\style.qss')
@@ -274,6 +274,7 @@ class MapTile(QtWidgets.QFrame):
 
     def repaint(self, focusedAgent: Agent) -> None:
         self.setProperty("highlighted", focusedAgent.careArea.inCareArea(self.loc))
+        self.setProperty("targetHighlighted", focusedAgent.careArea.target == (self.loc.x, self.loc.y))
         self.setStyleSheet(f'background-color: {Location2Color(self.loc).name()}')
         self.setToolTip(str(self.loc))
 
@@ -297,21 +298,15 @@ class HistoryListItem(QtWidgets.QListWidgetItem):
 def Location2Color(loc: Location) -> QColor:
     tp = loc.locationType
     if isinstance(loc.occupant, MovingObstacle):
-        return QColor(222,75,50)
+        return QColor(33,137,126)
     if isinstance(loc.occupant, StaticObstacle):
-        return QColor(1,1,1)
+        return QColor(137,128,245)
     if tp == LocationType.OFFROAD:
         return QColor(46,133,55) # green
     if isinstance(loc.occupant, Agent):
         return QColor(145,162,230) # västtrafik blue
     if tp == LocationType.ROAD:
         return QColor(141,141,141) # gray
-    if tp == LocationType.TARGET or tp == LocationType.START:
-        return QColor(75,189,176) # teal
-    # if tp == LocationType.CLEARED_ROAD:
-    #     return QColor(181,181,181) # light gray
-    # if tp == LocationType.VISITED:
-    #     return QColor(121,121,121)
     return QColor(255,0,0) # alarming red
 
 def Location2BluntColor(loc: Location) -> QColor:

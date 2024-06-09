@@ -53,9 +53,8 @@ QFrame {
 }
 
 *[targetHighlighted="true"] {
-    border: 3px solid #44bba4;
+    border: 3px solid #de4b32;
 }
-
 
 QPushButton {
     color: #393e41;
