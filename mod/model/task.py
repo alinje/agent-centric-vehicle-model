@@ -4,7 +4,7 @@ from appControl.exceptions import SimulationException
 from model.simulation.agent import Agent
 from model.simulation.obstacles import Temporal
 from model.simulation.history import ArrivedHistoryItem, EnvironmentMoveItem, History, HistoryItem, SpawnHistoryItem
-from model.space.spaceBasics import Arena
+from model.space.arena import Arena
 
 
         

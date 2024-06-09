@@ -2,8 +2,10 @@ from appControl.exceptions import ControllerException
 from model.runner.controller import Control
 from model.simulation.history import AgentMoveItem, HistoryItem
 from model.simulation.obstacles import Occupant, Temporal
+from model.space.arena import Arena
+from model.space.careArea import CareArea
 from model.space.locations import AbsoluteLocation
-from model.space.spaceBasics import Arena, Orientation, CareArea, changesPerpendicularLateral
+from model.space.spaceBasics import Orientation, changesPerpendicularLateral
 from model.variables.variables import Move
 
 

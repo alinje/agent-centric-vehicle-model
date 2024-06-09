@@ -1,11 +1,11 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from enum import Enum, auto
+from enum import Enum
 
-from appControl.exceptions import SimulationException, SynthesisException
-from model.space.locations import AbsoluteLocation, Location, LocationType
-from model.space.spaceBasics import Orientation, RelativeLocation, CareArea, Trajectory, Zone, changeGlobalToPerpendicularLateral, changesPerpendicularLateral, trajectoryFrom2Orientation
-from model.variables.variables import Move, ZoneRef
+from appControl.exceptions import SynthesisException
+from model.space.careArea import CareArea, Zone
+from model.space.locations import AbsoluteLocation, Location, LocationType, RelativeLocation
+from model.space.spaceBasics import Orientation, Trajectory, changeGlobalToPerpendicularLateral, trajectoryFrom2Orientation
+from model.variables.variables import Move
 
 
 class TargetOrientationType(Enum):

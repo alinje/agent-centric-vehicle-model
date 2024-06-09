@@ -5,7 +5,10 @@ from typing import Any
 from appControl.exceptions import PathException, SimulationException, SpawnException
 from model.simulation.agent import Agent
 from model.simulation.obstacles import MovingObstacle, Occupant, OccupiedArena, StaticObstacle
-from model.space.spaceBasics import AbsoluteLocation, Arena, Orientation, orientationFromChange
+from model.space.arena import Arena
+from model.space.careArea import NonInvadingSpace
+from model.space.locations import AbsoluteLocation
+from model.space.spaceBasics import Orientation, orientationFromChange
 from model.space.targetOrientation import TargetOrientationCareArea
 
 class OccupancyPattern(ABC):
@@ -71,7 +74,7 @@ class StaticObstacleSpawn(OccupancyPattern):
         self.loc = loc
 
     def spawn(self, arena: OccupiedArena) -> list[Occupant]:
-        if arena.safeZoneOccupied(arena.locations[self.loc]):
+        if NonInvadingSpace.invadingSpaceCheck(arena.locations[self.loc], arena):
             raise SpawnException(f'Could not spawn static obstacle {self.name} in occupied {str(self.loc)}')
         return [StaticObstacle(arena.locations[self.loc], self.name)]
 

@@ -7,8 +7,8 @@ from appControl.exceptions import ControllerException, MapException
 
 from model.simulation.obstacles import MovingObstacle, StaticObstacle
 from model.simulation.history import History, HistoryItem
-from model.space.locations import AbsoluteLocation, Location
-from model.space.spaceBasics import LocationType, Orientation, Zone
+from model.space.locations import AbsoluteLocation, Location, LocationType
+from model.space.spaceBasics import Orientation
 from model.task import Agent, Task
 
 
@@ -34,7 +34,6 @@ class VehiclePane(QtWidgets.QWidget):
         self.layout = QtWidgets.QGridLayout(self)
         self.layout.addWidget(self.arenaPane, 0, 0, 1, 2)
         self.layout.addWidget(careAreaHistorySplitter, 1, 0, 1, 2)
-        # TODO dump current run
         self.layout.addWidget(self.toolBar, 2, 0, 1, 2)
         self.layout.setRowStretch(0, 10)
         self.layout.setRowStretch(1, 10)

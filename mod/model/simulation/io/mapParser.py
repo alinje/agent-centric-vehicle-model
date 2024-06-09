@@ -7,8 +7,9 @@ from appControl.exceptions import MapException
 from model.runner.controller import Control
 from model.simulation.obstacles import Occupant, OccupiedArena
 from model.simulation.occupancyPattern import AgentSpawn, Path, StaticObstacleSpawn
+from model.space.arena import Arena
 from model.space.locations import AbsoluteLocation, LocationType
-from model.space.spaceBasics import Arena, orientationFromString
+from model.space.spaceBasics import orientationFromString
 
 pathSplitRegex = r'(?:(?P<name>\w+):\n(?P<desc>(?:(?:\d+\s?)+,\s?(?:\d+\s?)+;\s?)+(?:repeat;\s?)?))' #r'(?P<path>path (?P<pathName>\w+):\n(?:(?P<line>(?:\d+\s?)+,\s?(?:\d+\s?)+;\s)|(repeat;\s?))+)'
 lineSplitRegex = r'(?P<desc>(?:(?:\d+\s?)+,\s?(?:\d+\s?)+;\s?))'

@@ -2,7 +2,9 @@ from __future__ import annotations
 from abc import ABC
 
 from model.simulation.history import HistoryItem, MovingObstacleItem
-from model.space.spaceBasics import AbsoluteLocation, Arena
+from model.space.arena import Arena
+from model.space.careArea import NonInvadingSpace
+from model.space.locations import AbsoluteLocation
 
 class Temporal(ABC):
     def __init__(self, name: str='NaN') -> None:
@@ -46,19 +48,21 @@ class MovingObstacle(Occupant, Temporal):
         self.path = path
         self.pathIndex = 0
         self.orientation = path.orientationFrom(arena, self.pathIndex)
+        self.safeSpace = NonInvadingSpace(self)
 
     def next(self, arena: Arena) -> HistoryItem:
         preLoc = self.loc
         (nextOnPath, suggestedPathIndex) = self.path.moveSuggestion(self.pathIndex, arena)
         if nextOnPath != self.loc:
-            if arena.safeZoneOccupiedByOther(nextOnPath, self):
+            suggestedOrientation = self.path.orientationFrom(arena, suggestedPathIndex)
+            self.safeSpace.constructCareArea(nextOnPath, suggestedOrientation, arena)
+            if self.safeSpace.invading():
                 return
             self.loc.free(self)
             self.loc = nextOnPath
             nextOnPath.receiveOccupant(self)
-            self.orientation = self.path.orientationFrom(arena, suggestedPathIndex)
+            self.orientation = suggestedOrientation
         self.pathIndex = suggestedPathIndex
-        # arena[(self.loc.x, self.loc.y)] = 
         return MovingObstacleItem(self.name, preLoc, self.loc)
 
 class OccupiedArena(Arena):
@@ -74,6 +78,6 @@ class OccupiedArena(Arena):
         return self.unoccupiedBuffer
     
     def safeLocations(self) -> list[AbsoluteLocation]:
-        return [self.safeZoneOccupied(loc) for loc in self.unoccupiedLocations()]
+        return [NonInvadingSpace.invadingSpaceCheck(loc, self) for loc in self.unoccupiedLocations()]
 
 
